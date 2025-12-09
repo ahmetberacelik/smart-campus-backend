@@ -4,11 +4,21 @@
 
 ### 1.1 Base URL
 
+**Production (Önerilen):**
 ```
-Lokal Geliştirme: http://localhost:8081
-Production: http://138.68.99.35:8081
+API Gateway: http://138.68.99.35:8080
+Auth Service (Direkt): http://138.68.99.35:8081
+Swagger UI: http://138.68.99.35:8081/swagger-ui.html
+```
+
+**Lokal Geliştirme:**
+```
 API Gateway: http://localhost:8080
+Auth Service (Direkt): http://localhost:8081
+Swagger UI: http://localhost:8081/swagger-ui.html
 ```
+
+**Not:** Tüm API endpoint'leri **8080 portu** üzerinden API Gateway üzerinden erişilebilir.
 
 ### 1.2 API Versiyonu
 
@@ -1156,9 +1166,10 @@ GET /api/v1/departments/code/CENG
 
 ### 7.1 Öğrenci Kaydı ve Giriş
 
+**Production:**
 ```bash
 # 1. Kayıt
-curl -X POST http://localhost:8081/api/v1/auth/register \
+curl -X POST http://138.68.99.35:8080/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "ahmet.kaya@smartcampus.edu.tr",
@@ -1172,14 +1183,14 @@ curl -X POST http://localhost:8081/api/v1/auth/register \
   }'
 
 # 2. Email doğrulama (token email'den alınır)
-curl -X POST http://localhost:8081/api/v1/auth/verify-email \
+curl -X POST http://138.68.99.35:8080/api/v1/auth/verify-email \
   -H "Content-Type: application/json" \
   -d '{
     "token": "9f1b4f5c-b164-4e9f-ac4f-8cff031b2a9f"
   }'
 
 # 3. Giriş
-curl -X POST http://localhost:8081/api/v1/auth/login \
+curl -X POST http://138.68.99.35:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "ahmet.kaya@smartcampus.edu.tr",
@@ -1187,14 +1198,51 @@ curl -X POST http://localhost:8081/api/v1/auth/login \
   }'
 
 # 4. Profil görüntüleme
-curl -X GET http://localhost:8081/api/v1/users/me \
+curl -X GET http://138.68.99.35:8080/api/v1/users/me \
+  -H "Authorization: Bearer {access_token}"
+```
+
+**Lokal Geliştirme:**
+```bash
+# 1. Kayıt
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "ahmet.kaya@smartcampus.edu.tr",
+    "password": "SecurePass123",
+    "firstName": "Ahmet",
+    "lastName": "Kaya",
+    "phoneNumber": "05551234567",
+    "role": "STUDENT",
+    "departmentId": 1,
+    "studentNumber": "20210001"
+  }'
+
+# 2. Email doğrulama
+curl -X POST http://localhost:8080/api/v1/auth/verify-email \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "9f1b4f5c-b164-4e9f-ac4f-8cff031b2a9f"
+  }'
+
+# 3. Giriş
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "ahmet.kaya@smartcampus.edu.tr",
+    "password": "SecurePass123"
+  }'
+
+# 4. Profil görüntüleme
+curl -X GET http://localhost:8080/api/v1/users/me \
   -H "Authorization: Bearer {access_token}"
 ```
 
 ### 7.2 Öğretim Üyesi Kaydı
 
+**Production:**
 ```bash
-curl -X POST http://localhost:8081/api/v1/auth/register \
+curl -X POST http://138.68.99.35:8080/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "ayse.demir@smartcampus.edu.tr",
@@ -1211,8 +1259,9 @@ curl -X POST http://localhost:8081/api/v1/auth/register \
 
 ### 7.3 Token Yenileme
 
+**Production:**
 ```bash
-curl -X POST http://localhost:8081/api/v1/auth/refresh \
+curl -X POST http://138.68.99.35:8080/api/v1/auth/refresh \
   -H "Content-Type: application/json" \
   -d '{
     "refreshToken": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -1221,8 +1270,9 @@ curl -X POST http://localhost:8081/api/v1/auth/refresh \
 
 ### 7.4 Profil Fotoğrafı Yükleme
 
+**Production:**
 ```bash
-curl -X POST http://localhost:8081/api/v1/users/me/profile-picture \
+curl -X POST http://138.68.99.35:8080/api/v1/users/me/profile-picture \
   -H "Authorization: Bearer {access_token}" \
   -F "file=@/path/to/profile.jpg"
 ```
@@ -1233,7 +1283,8 @@ curl -X POST http://localhost:8081/api/v1/users/me/profile-picture \
 
 Detaylı API dokümantasyonu ve interaktif test için Swagger UI kullanılabilir:
 
-**URL:** `http://localhost:8081/swagger-ui.html`
+**Production:** `http://138.68.99.35:8081/swagger-ui.html`  
+**Lokal:** `http://localhost:8081/swagger-ui.html`
 
 Swagger UI'da:
 - Tüm endpoint'ler listelenir

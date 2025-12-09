@@ -90,6 +90,32 @@ Smart Campus, bir üniversite kampüsünün günlük operasyonlarını dijitalle
 
 ## 🚀 Kurulum
 
+### Production Deployment (138.68.99.35)
+
+Detaylı deployment dokümantasyonu için: [DEPLOYMENT.md](docs/DEPLOYMENT.md)
+
+**Hızlı Başlangıç:**
+```bash
+# 1. Repository'yi klonla
+git clone https://github.com/your-username/smart-campus-backend.git
+cd smart-campus-backend
+
+# 2. Environment dosyası oluştur
+cp .env.example .env
+nano .env  # Gerekli değerleri doldur
+
+# 3. Deployment script'ini çalıştır
+chmod +x deploy.sh
+./deploy.sh
+```
+
+**Önemli:** Production'da `.env` dosyasında:
+- `AUTH_SERVICE_HOST=auth-service` (Docker network içinde)
+- `DB_HOST=138.68.99.35` (Mevcut database)
+- `FRONTEND_URL=http://138.68.99.35:3000`
+
+### Lokal Geliştirme
+
 ### 1. Repository'yi Klonla
 
 ```bash
@@ -102,15 +128,10 @@ cd smart-campus-backend
 ```bash
 cp .env.example .env
 # .env dosyasını düzenle ve gerekli değerleri gir
+# Lokal için: AUTH_SERVICE_HOST=localhost
 ```
 
-### 3. Docker Network Oluştur (İlk kurulumda)
-
-```bash
-docker network create smart_campus_network
-```
-
-### 4. Servisleri Başlat
+### 3. Servisleri Başlat
 
 ```bash
 docker-compose up -d --build
@@ -152,13 +173,25 @@ mvn spring-boot:run
 
 ## 📚 API Dokümantasyonu
 
-Swagger UI üzerinden API dokümantasyonuna erişebilirsiniz:
+### Production (138.68.99.35)
 
 | Servis | URL |
 |--------|-----|
-| Auth Service | http://localhost:8081/swagger-ui.html |
+| **API Gateway** | http://138.68.99.35:8080 |
+| **Auth Service** | http://138.68.99.35:8081 |
+| **Swagger UI** | http://138.68.99.35:8081/swagger-ui.html |
+
+### Lokal Geliştirme
+
+| Servis | URL |
+|--------|-----|
+| **API Gateway** | http://localhost:8080 |
+| **Auth Service** | http://localhost:8081 |
+| **Swagger UI** | http://localhost:8081/swagger-ui.html |
 
 ### Temel Endpoints
+
+**Not:** Tüm endpoint'ler **8080 portu** üzerinden API Gateway üzerinden erişilebilir.
 
 | Method | Endpoint | Açıklama |
 |--------|----------|----------|
@@ -168,6 +201,15 @@ Swagger UI üzerinden API dokümantasyonuna erişebilirsiniz:
 | POST | `/api/v1/auth/logout` | Çıkış |
 | GET | `/api/v1/users/me` | Profil görüntüleme |
 | PUT | `/api/v1/users/me` | Profil güncelleme |
+
+**Örnek:**
+```bash
+# Production
+curl http://138.68.99.35:8080/api/v1/auth/login
+
+# Lokal
+curl http://localhost:8080/api/v1/auth/login
+```
 
 ---
 
@@ -213,20 +255,51 @@ smart-campus-backend/
 
 ## 🔐 Environment Variables
 
-| Değişken | Açıklama | Örnek |
-|----------|----------|-------|
-| `DB_HOST` | MySQL host | smart_campus_db |
-| `DB_PORT` | MySQL port | 3306 |
-| `DB_NAME` | Database adı | smart_campus |
-| `DB_USERNAME` | Database kullanıcı | root |
-| `DB_PASSWORD` | Database şifre | *** |
-| `JWT_SECRET` | JWT secret key | *** |
-| `MAIL_USERNAME` | Gmail adresi | ***@gmail.com |
-| `MAIL_PASSWORD` | Gmail App Password | *** |
-| `DO_SPACES_KEY` | DO Spaces key | *** |
-| `DO_SPACES_SECRET` | DO Spaces secret | *** |
+| Değişken | Açıklama | Production | Lokal |
+|----------|----------|------------|-------|
+| `DB_HOST` | MySQL host | `138.68.99.35` | `localhost` |
+| `DB_PORT` | MySQL port | `3306` | `3306` |
+| `DB_NAME` | Database adı | `smart_campus` | `smart_campus` |
+| `AUTH_SERVICE_HOST` | Auth service host | `auth-service` | `localhost` |
+| `AUTH_SERVICE_PORT` | Auth service port | `8081` | `8081` |
+| `FRONTEND_URL` | Frontend URL | `http://138.68.99.35:3000` | `http://localhost:3000` |
+| `CORS_ALLOWED_ORIGINS` | CORS origins | `http://138.68.99.35:3000` | `http://localhost:3000` |
+| `JWT_SECRET` | JWT secret key | Güçlü key! | Güçlü key! |
 
-Tüm değişkenler için `.env.example` dosyasına bakın.
+**Tüm değişkenler için `.env.example` dosyasına bakın.**
+
+**Önemli Notlar:**
+- Production'da `AUTH_SERVICE_HOST=auth-service` olmalı (Docker network)
+- Lokal'de `AUTH_SERVICE_HOST=localhost` kullanılabilir
+- `JWT_SECRET` production'da mutlaka güçlü olmalı (min 32 karakter)
+
+---
+
+## 🚀 Deployment
+
+**Production Deployment (138.68.99.35):**
+
+Detaylı deployment dokümantasyonu:
+- [DEPLOYMENT.md](docs/DEPLOYMENT.md) - Detaylı deployment rehberi
+- [DEPLOYMENT_QUICK_START.md](docs/DEPLOYMENT_QUICK_START.md) - Hızlı başlangıç
+
+**Hızlı Komutlar:**
+```bash
+# Deployment script'i çalıştır
+./deploy.sh
+
+# Manuel deployment
+docker-compose build
+docker-compose up -d
+
+# Logları görüntüle
+docker-compose logs -f
+```
+
+**Production URL'leri:**
+- API Gateway: `http://138.68.99.35:8080`
+- Auth Service: `http://138.68.99.35:8081`
+- Swagger UI: `http://138.68.99.35:8081/swagger-ui.html`
 
 ---
 
