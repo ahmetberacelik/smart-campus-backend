@@ -1,0 +1,35 @@
+# Build stage
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+
+# Copy parent pom
+COPY pom.xml ./pom.xml
+COPY api-gateway/pom.xml ./api-gateway/pom.xml
+COPY auth-service/pom.xml ./auth-service/pom.xml
+
+# Download dependencies
+RUN mvn dependency:go-offline -pl auth-service -am
+
+# Copy source code
+COPY auth-service/src ./auth-service/src
+
+# Build the application
+RUN mvn clean package -pl auth-service -am -DskipTests
+
+# Runtime stage
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+
+# Add non-root user
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
+
+# Copy jar from build stage
+COPY --from=build /app/auth-service/target/*.jar app.jar
+
+# Expose port
+EXPOSE 8081
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]
+
