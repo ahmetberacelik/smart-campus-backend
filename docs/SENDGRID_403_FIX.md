@@ -114,6 +114,28 @@ Hata mesajı size tam olarak neyin yanlış olduğunu söyleyecektir.
 ### "Invalid API Key"
 - **Çözüm:** API Key'i kontrol edin, yeni bir tane oluşturun
 
+## Email Spam Klasörüne Düşüyor
+
+Eğer email'ler spam klasörüne düşüyorsa:
+
+1. **Domain Authentication Yapın:**
+   - Single Sender Verification yerine Domain Authentication yapın
+   - Bu, email deliverability'yi önemli ölçüde artırır
+   - Settings > Sender Authentication > Authenticate Your Domain
+
+2. **SPF/DKIM Kayıtları:**
+   - Domain'inize SPF ve DKIM kayıtları ekleyin
+   - SendGrid size bu kayıtları sağlayacak
+
+3. **Email İçeriğini Optimize Edin:**
+   - Spam trigger kelimelerden kaçının
+   - HTML email formatını düzgün kullanın
+   - Link'leri kısaltmayın (spam filter'ları şüpheli bulabilir)
+
+4. **"Not Spam" Olarak İşaretleyin:**
+   - Kullanıcılardan email'i "Not Spam" olarak işaretlemelerini isteyin
+   - Bu, gelecekteki email'lerin inbox'a düşmesine yardımcı olur
+
 ---
 
 **Son Güncelleme:** 10 Aralık 2025
