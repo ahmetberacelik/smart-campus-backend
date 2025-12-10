@@ -83,18 +83,45 @@ public class EmailServiceImpl implements EmailService {
             Map<String, Object> personalization = new HashMap<>();
             personalization.put("to", List.of(Map.of("email", to)));
 
+            // From email with name (spam filtrelerini iyileştirir)
+            String senderEmail = fromEmail != null && !fromEmail.isEmpty() ? fromEmail : "noreply@smartcampus.edu.tr";
             Map<String, Object> from = new HashMap<>();
-            from.put("email", fromEmail != null && !fromEmail.isEmpty() ? fromEmail : "noreply@smartcampus.edu.tr");
+            from.put("email", senderEmail);
+            from.put("name", "Smart Campus"); // Gönderen ismi ekle
 
-            Map<String, Object> emailContent = new HashMap<>();
-            emailContent.put("type", "text/html");
-            emailContent.put("value", content);
+            // Reply-To header (profesyonel görünüm)
+            Map<String, Object> replyTo = new HashMap<>();
+            replyTo.put("email", senderEmail);
+            replyTo.put("name", "Smart Campus Support");
+
+            // HTML ve Plain Text içerik (multipart email spam'e düşme riskini azaltır)
+            Map<String, Object> htmlContent = new HashMap<>();
+            htmlContent.put("type", "text/html");
+            htmlContent.put("value", content);
+
+            // Plain text versiyonu (HTML'den basit dönüşüm)
+            String plainText = content
+                    .replaceAll("<style[^>]*>[^<]*</style>", "")
+                    .replaceAll("<[^>]+>", "")
+                    .replaceAll("&nbsp;", " ")
+                    .replaceAll("\\s+", " ")
+                    .trim();
+            Map<String, Object> textContent = new HashMap<>();
+            textContent.put("type", "text/plain");
+            textContent.put("value", plainText);
+
+            // Tracking ayarları (tıklama takibi kapatılabilir - bazen spam'e neden olur)
+            Map<String, Object> trackingSettings = new HashMap<>();
+            trackingSettings.put("click_tracking", Map.of("enable", false, "enable_text", false));
+            trackingSettings.put("open_tracking", Map.of("enable", true));
 
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("personalizations", List.of(personalization));
             requestBody.put("from", from);
+            requestBody.put("reply_to", replyTo);
             requestBody.put("subject", subject);
-            requestBody.put("content", List.of(emailContent));
+            requestBody.put("content", List.of(textContent, htmlContent)); // Plain text önce, HTML sonra
+            requestBody.put("tracking_settings", trackingSettings);
 
             WebClient webClient = webClientBuilder
                     .baseUrl("https://api.sendgrid.com")

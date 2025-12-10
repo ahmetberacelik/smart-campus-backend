@@ -213,3 +213,4 @@ Ve `application.properties` dosyasını Gmail için uygun şekilde güncelleyin.
 
 **Son Güncelleme:** 10 Aralık 2025
 
+
