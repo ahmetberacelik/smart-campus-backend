@@ -99,3 +99,5 @@ echo ""
 echo -e "${YELLOW}📝 Logları görmek için: docker-compose logs -f${NC}"
 echo -e "${YELLOW}🛑 Durdurmak için: docker-compose down${NC}"
 
+
+

@@ -28,15 +28,31 @@ Bu değişiklik yapıldı. Container'ı yeniden başlatın:
 docker-compose restart auth-service
 ```
 
-#### 2. Firewall Kontrolü
+#### 2. Port 465 (SSL) ile Deneme
+
+Port 587 bağlantı kuramıyorsa, Port 465 (SSL) ile deneyin. `.env` dosyasında:
+```bash
+MAIL_PORT=465
+```
+
+Sonra container'ı yeniden başlatın:
+```bash
+docker-compose restart auth-service
+```
+
+#### 3. Network Bağlantısını Test Et
 
 Sunucudan Gmail SMTP'ye erişimi test edin:
 ```bash
-# Container içinden test
+# Container içinden Port 587 test
 docker exec -it smart_campus_auth telnet smtp.gmail.com 587
+
+# Container içinden Port 465 test
+docker exec -it smart_campus_auth telnet smtp.gmail.com 465
 
 # Sunucudan direkt test
 telnet smtp.gmail.com 587
+telnet smtp.gmail.com 465
 ```
 
 Eğer bağlantı kurulamıyorsa, firewall'u kontrol edin:
@@ -44,11 +60,20 @@ Eğer bağlantı kurulamıyorsa, firewall'u kontrol edin:
 # UFW durumunu kontrol et
 sudo ufw status
 
-# Gerekirse 587 portunu aç (ama bu genellikle gerekmez, çıkış portu)
-# UFW genellikle çıkış trafiğini engellemez
+# UFW genellikle çıkış trafiğini engellemez, ama kontrol edin
+sudo ufw status verbose
 ```
 
-#### 3. Network Bağlantısını Kontrol Et
+#### 4. DigitalOcean Firewall Kontrolü
+
+DigitalOcean Dashboard'dan:
+1. **Networking** > **Firewalls** bölümüne gidin
+2. Sunucunuza bağlı firewall'u kontrol edin
+3. **Outbound Rules** bölümünde SMTP portlarının açık olduğundan emin olun:
+   - Port 587 (SMTP STARTTLS)
+   - Port 465 (SMTP SSL)
+
+#### 5. Network Bağlantısını Kontrol Et
 
 ```bash
 # DNS çözümlemesi
@@ -58,7 +83,7 @@ docker exec -it smart_campus_auth nslookup smtp.gmail.com
 docker exec -it smart_campus_auth ping -c 3 smtp.gmail.com
 ```
 
-#### 4. SMTP Timeout Değerlerini Artır
+#### 6. SMTP Timeout Değerlerini Artır
 
 `application.properties` dosyasında timeout değerleri artırıldı:
 ```properties
@@ -67,14 +92,24 @@ spring.mail.properties.mail.smtp.timeout=30000
 spring.mail.properties.mail.smtp.writetimeout=30000
 ```
 
-#### 5. DigitalOcean Firewall Kontrolü
+#### 7. Alternatif Email Servisleri
 
-DigitalOcean Dashboard'dan:
-1. **Networking** > **Firewalls** bölümüne gidin
-2. Sunucunuza bağlı firewall'u kontrol edin
-3. **Outbound Rules** bölümünde SMTP portlarının açık olduğundan emin olun:
-   - Port 587 (SMTP)
-   - Port 465 (SMTP SSL)
+Eğer Gmail SMTP sürekli sorun çıkarıyorsa, alternatif email servisleri kullanılabilir:
+
+**SendGrid:**
+- Port: 587
+- SSL: STARTTLS
+- Ücretsiz plan: 100 email/gün
+
+**Mailgun:**
+- Port: 587
+- SSL: STARTTLS
+- Ücretsiz plan: 5000 email/ay
+
+**Amazon SES:**
+- Port: 587 veya 465
+- SSL: STARTTLS veya SSL
+- Ücretsiz plan: 62,000 email/ay (EC2'dan)
 
 ### Notlar
 
@@ -168,4 +203,5 @@ docker-compose logs --tail 100
 ---
 
 **Son Güncelleme:** 9 Aralık 2025
+
 
