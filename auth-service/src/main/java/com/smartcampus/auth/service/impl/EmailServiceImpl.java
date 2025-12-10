@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
 import java.util.List;
@@ -73,7 +74,7 @@ public class EmailServiceImpl implements EmailService {
             sendViaSendGridHttpApi(to, subject, content);
         } else {
             log.warn("SendGrid HTTP API is not enabled or API key is missing. Email sending is disabled.");
-            throw new RuntimeException("Email servisi yapılandırılmamış");
+            // Email gönderilemese bile exception fırlatma, sadece log'la
         }
     }
 
@@ -105,13 +106,23 @@ public class EmailServiceImpl implements EmailService {
                     .uri("/v3/mail/send")
                     .bodyValue(requestBody)
                     .retrieve()
+                    .onStatus(status -> status.isError(), clientResponse -> {
+                        return clientResponse.bodyToMono(String.class)
+                                .flatMap(errorBody -> {
+                                    log.error("SendGrid API error response (Status: {}): {}", 
+                                            clientResponse.statusCode(), errorBody);
+                                    return Mono.error(new RuntimeException("SendGrid API error: " + errorBody));
+                                });
+                    })
                     .bodyToMono(String.class)
                     .block();
 
             log.info("Email sent successfully via SendGrid HTTP API to: {}", to);
         } catch (Exception e) {
             log.error("Failed to send email via SendGrid HTTP API to {}: {}", to, e.getMessage(), e);
-            throw new RuntimeException("Email gönderilemedi: " + e.getMessage(), e);
+            // Email gönderme hatası uygulamayı durdurmamalı
+            // Sadece log'layalım, exception fırlatmayalım
+            log.warn("Email gönderilemedi ama kullanıcı kaydı tamamlandı. Email: {}", to);
         }
     }
 
