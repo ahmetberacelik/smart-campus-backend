@@ -219,14 +219,65 @@ Caused by: java.net.SocketTimeoutException: Connect timed out
 
 ## 🆘 Hala Çalışmıyorsa
 
-1. **Network testi sonuçlarını paylaşın** - Hangi komutlar başarısız oldu?
-2. **Firewall loglarını kontrol edin:**
+### Durum: Gmail SMTP'ye Erişim Engellenmiş
+
+Eğer tüm firewall kuralları doğru olmasına rağmen hala bağlantı kurulamıyorsa:
+
+**IPv4:** `Connection timed out`  
+**IPv6:** `Network is unreachable`
+
+Bu, **DigitalOcean seviyesinde Gmail SMTP'ye erişim engellenmiş** anlamına gelir. Bu durumda:
+
+### ✅ Önerilen Çözüm: SendGrid Kullanın
+
+SendGrid'in SMTP sunucuları genellikle daha az kısıtlamaya sahiptir ve DigitalOcean'dan erişilebilir.
+
+#### SendGrid Kurulumu:
+
+1. **SendGrid Hesabı Oluşturun:**
+   - https://sendgrid.com adresine gidin
+   - Ücretsiz hesap oluşturun (100 email/gün)
+
+2. **API Key Oluşturun:**
+   - Dashboard > Settings > API Keys
+   - "Create API Key" butonuna tıklayın
+   - Key adı: `smart-campus-smtp`
+   - Permissions: "Full Access" veya "Mail Send"
+   - API Key'i kopyalayın (sadece bir kez gösterilir!)
+
+3. **`.env` Dosyasını Güncelleyin:**
    ```bash
-   sudo journalctl -u ufw
-   sudo dmesg | grep -i firewall
+   MAIL_HOST=smtp.sendgrid.net
+   MAIL_PORT=587
+   MAIL_USERNAME=apikey
+   MAIL_PASSWORD=<SENDGRID_API_KEY_BURAYA>
    ```
-3. **DigitalOcean Support'a başvurun** - Firewall kurallarını kontrol etmelerini isteyin
-4. **Alternatif email servisi kullanın** - SendGrid veya Mailgun
+
+4. **`application.properties` Dosyasını Güncelleyin:**
+   - Port 587 için STARTTLS kullanılmalı
+   - SSL devre dışı, STARTTLS aktif olmalı
+
+5. **Container'ı Yeniden Başlatın:**
+   ```bash
+   docker-compose restart auth-service
+   ```
+
+#### SendGrid için application.properties Ayarları:
+
+```properties
+# SendGrid SMTP Configuration
+spring.mail.host=smtp.sendgrid.net
+spring.mail.port=587
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.properties.mail.smtp.starttls.required=true
+spring.mail.properties.mail.smtp.ssl.enable=false
+spring.mail.properties.mail.transport.protocol=smtp
+```
+
+### Alternatif: Mailgun
+
+Mailgun da iyi bir alternatiftir (5,000 email/ay ücretsiz).
 
 ---
 
