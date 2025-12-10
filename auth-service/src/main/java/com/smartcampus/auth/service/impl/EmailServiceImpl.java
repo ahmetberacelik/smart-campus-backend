@@ -1,28 +1,37 @@
 package com.smartcampus.auth.service.impl;
 
 import com.smartcampus.auth.service.EmailService;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailServiceImpl implements EmailService {
 
-    private final JavaMailSender mailSender;
+    private final WebClient.Builder webClientBuilder;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.username:}")
     private String fromEmail;
+
+    @Value("${sendgrid.api-key:}")
+    private String sendGridApiKey;
+
+    @Value("${sendgrid.enabled:false}")
+    private boolean sendGridEnabled;
 
     @Override
     @Async
@@ -60,19 +69,49 @@ public class EmailServiceImpl implements EmailService {
     }
 
     private void sendHtmlEmail(String to, String subject, String content) {
+        if (sendGridEnabled && sendGridApiKey != null && !sendGridApiKey.isEmpty()) {
+            sendViaSendGridHttpApi(to, subject, content);
+        } else {
+            log.warn("SendGrid HTTP API is not enabled or API key is missing. Email sending is disabled.");
+            throw new RuntimeException("Email servisi yapılandırılmamış");
+        }
+    }
+
+    private void sendViaSendGridHttpApi(String to, String subject, String content) {
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            Map<String, Object> personalization = new HashMap<>();
+            personalization.put("to", List.of(Map.of("email", to)));
 
-            helper.setFrom(fromEmail);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(content, true);
+            Map<String, Object> from = new HashMap<>();
+            from.put("email", fromEmail != null && !fromEmail.isEmpty() ? fromEmail : "noreply@smartcampus.edu.tr");
 
-            mailSender.send(message);
-        } catch (MessagingException e) {
-            log.error("Failed to send email to {}: {}", to, e.getMessage());
-            throw new RuntimeException("Email gönderilemedi", e);
+            Map<String, Object> emailContent = new HashMap<>();
+            emailContent.put("type", "text/html");
+            emailContent.put("value", content);
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("personalizations", List.of(personalization));
+            requestBody.put("from", from);
+            requestBody.put("subject", subject);
+            requestBody.put("content", List.of(emailContent));
+
+            WebClient webClient = webClientBuilder
+                    .baseUrl("https://api.sendgrid.com")
+                    .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + sendGridApiKey)
+                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .build();
+
+            webClient.post()
+                    .uri("/v3/mail/send")
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            log.info("Email sent successfully via SendGrid HTTP API to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send email via SendGrid HTTP API to {}: {}", to, e.getMessage(), e);
+            throw new RuntimeException("Email gönderilemedi: " + e.getMessage(), e);
         }
     }
 
