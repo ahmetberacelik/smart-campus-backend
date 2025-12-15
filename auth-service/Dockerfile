@@ -2,15 +2,16 @@
 FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 
-# Copy parent pom
+# Copy parent pom and all module poms
 COPY pom.xml ./pom.xml
 COPY api-gateway/pom.xml ./api-gateway/pom.xml
 COPY auth-service/pom.xml ./auth-service/pom.xml
+COPY academic-service/pom.xml ./academic-service/pom.xml
 
-# Download dependencies
-RUN mvn dependency:go-offline -pl auth-service -am
+# Create empty source directories for other modules to satisfy Maven
+RUN mkdir -p api-gateway/src/main/java academic-service/src/main/java
 
-# Copy source code
+# Copy auth-service source code
 COPY auth-service/src ./auth-service/src
 
 # Build the application
@@ -32,4 +33,3 @@ EXPOSE 8081
 
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
-

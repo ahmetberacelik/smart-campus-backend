@@ -1326,15 +1326,1418 @@ Swagger UI'da:
 
 ---
 
-## 10. Versiyon Geçmişi
+## 10. Part 2 - Academic Management Endpoints
+
+### 10.1 Ders Yönetimi (Courses)
+
+#### 10.1.1 Ders Listesi
+
+**Endpoint:** `GET /api/v1/courses`
+
+**Açıklama:** Tüm dersleri listeler. Pagination, filtreleme ve arama destekler.
+
+**Authentication:** Gerekli değil
+
+**Query Parameters:**
+- `page` (Integer, default: 0) - Sayfa numarası
+- `size` (Integer, default: 10) - Sayfa başına kayıt
+- `sortBy` (String, default: "code") - Sıralama alanı
+- `sortDir` (String, default: "asc") - Sıralama yönü
+- `search` (String, optional) - Ders kodu veya adı ile arama
+- `departmentId` (Long, optional) - Bölüm filtresi
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "code": "CSE101",
+        "name": "Programlamaya Giriş",
+        "description": "Temel programlama kavramları...",
+        "credits": 4,
+        "ects": 6,
+        "syllabusUrl": "https://...",
+        "departmentId": 1,
+        "departmentName": "Bilgisayar Mühendisliği",
+        "prerequisites": [
+          {
+            "id": 2,
+            "code": "MAT101",
+            "name": "Matematik I"
+          }
+        ]
+      }
+    ],
+    "page": 0,
+    "size": 10,
+    "totalElements": 50,
+    "totalPages": 5
+  }
+}
+```
+
+---
+
+#### 10.1.2 Ders Detayı
+
+**Endpoint:** `GET /api/v1/courses/{id}`
+
+**Açıklama:** Belirtilen dersin detaylarını ve önkoşullarını getirir.
+
+**Authentication:** Gerekli değil
+
+**Path Parameters:**
+- `id` (Long, required) - Ders ID'si
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "code": "CSE101",
+    "name": "Programlamaya Giriş",
+    "description": "Temel programlama kavramları, algoritmalar ve veri yapıları...",
+    "credits": 4,
+    "ects": 6,
+    "syllabusUrl": "https://storage.smartcampus.edu.tr/syllabus/cse101.pdf",
+    "departmentId": 1,
+    "departmentName": "Bilgisayar Mühendisliği",
+    "prerequisites": [
+      {
+        "id": 2,
+        "code": "MAT101",
+        "name": "Matematik I"
+      }
+    ],
+    "sections": [
+      {
+        "id": 1,
+        "sectionNumber": "01",
+        "semester": "FALL",
+        "year": 2025,
+        "instructorId": 5,
+        "instructorName": "Prof. Dr. Ayşe Demir",
+        "capacity": 40,
+        "enrolledCount": 35,
+        "schedule": {
+          "monday": ["09:00-10:50"],
+          "wednesday": ["09:00-10:50"]
+        },
+        "classroomId": 1,
+        "classroomName": "A-101"
+      }
+    ]
+  }
+}
+```
+
+---
+
+#### 10.1.3 Ders Oluşturma (Admin)
+
+**Endpoint:** `POST /api/v1/courses`
+
+**Açıklama:** Yeni ders oluşturur. Sadece admin erişebilir.
+
+**Authentication:** Gerekli (JWT - ADMIN rolü)
+
+**Request Body:**
+```json
+{
+  "code": "CSE102",
+  "name": "Veri Yapıları",
+  "description": "Temel veri yapıları ve algoritmalar...",
+  "credits": 4,
+  "ects": 6,
+  "syllabusUrl": "https://...",
+  "departmentId": 1,
+  "prerequisiteIds": [1]
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Ders başarıyla oluşturuldu",
+  "data": {
+    "id": 2,
+    "code": "CSE102",
+    "name": "Veri Yapıları"
+  }
+}
+```
+
+---
+
+#### 10.1.4 Ders Güncelleme (Admin)
+
+**Endpoint:** `PUT /api/v1/courses/{id}`
+
+**Açıklama:** Mevcut dersi günceller. Sadece admin erişebilir.
+
+**Authentication:** Gerekli (JWT - ADMIN rolü)
+
+**Request Body:**
+```json
+{
+  "name": "Veri Yapıları ve Algoritmalar",
+  "description": "Güncellenmiş açıklama...",
+  "credits": 5,
+  "ects": 7,
+  "prerequisiteIds": [1, 3]
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Ders başarıyla güncellendi",
+  "data": { ... }
+}
+```
+
+---
+
+#### 10.1.5 Ders Silme (Admin)
+
+**Endpoint:** `DELETE /api/v1/courses/{id}`
+
+**Açıklama:** Dersi siler (soft delete). Sadece admin erişebilir.
+
+**Authentication:** Gerekli (JWT - ADMIN rolü)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Ders başarıyla silindi"
+}
+```
+
+---
+
+### 10.2 Ders Bölümleri (Course Sections)
+
+#### 10.2.1 Section Listesi
+
+**Endpoint:** `GET /api/v1/sections`
+
+**Açıklama:** Ders bölümlerini listeler.
+
+**Authentication:** Gerekli (JWT)
+
+**Query Parameters:**
+- `courseId` (Long, optional) - Ders filtresi
+- `instructorId` (Long, optional) - Öğretim üyesi filtresi
+- `semester` (Enum, optional) - Dönem filtresi (FALL, SPRING, SUMMER)
+- `year` (Integer, optional) - Yıl filtresi
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "courseId": 1,
+        "courseCode": "CSE101",
+        "courseName": "Programlamaya Giriş",
+        "sectionNumber": "01",
+        "semester": "FALL",
+        "year": 2025,
+        "instructorId": 5,
+        "instructorName": "Prof. Dr. Ayşe Demir",
+        "capacity": 40,
+        "enrolledCount": 35,
+        "schedule": {
+          "monday": ["09:00-10:50"],
+          "wednesday": ["09:00-10:50"]
+        },
+        "classroomId": 1,
+        "classroomName": "A-101"
+      }
+    ]
+  }
+}
+```
+
+---
+
+#### 10.2.2 Section Detayı
+
+**Endpoint:** `GET /api/v1/sections/{id}`
+
+**Açıklama:** Belirtilen section'ın detaylarını getirir.
+
+**Authentication:** Gerekli (JWT)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "courseId": 1,
+    "courseCode": "CSE101",
+    "courseName": "Programlamaya Giriş",
+    "sectionNumber": "01",
+    "semester": "FALL",
+    "year": 2025,
+    "instructorId": 5,
+    "instructorName": "Prof. Dr. Ayşe Demir",
+    "capacity": 40,
+    "enrolledCount": 35,
+    "schedule": {
+      "monday": ["09:00-10:50"],
+      "wednesday": ["09:00-10:50"]
+    },
+    "classroomId": 1,
+    "classroomName": "A-101",
+    "classroom": {
+      "building": "A Blok",
+      "roomNumber": "101",
+      "latitude": 41.0082,
+      "longitude": 29.0186
+    }
+  }
+}
+```
+
+---
+
+#### 10.2.3 Section Oluşturma (Admin)
+
+**Endpoint:** `POST /api/v1/sections`
+
+**Açıklama:** Yeni ders bölümü oluşturur.
+
+**Authentication:** Gerekli (JWT - ADMIN rolü)
+
+**Request Body:**
+```json
+{
+  "courseId": 1,
+  "sectionNumber": "02",
+  "semester": "FALL",
+  "year": 2025,
+  "instructorId": 6,
+  "capacity": 35,
+  "classroomId": 2,
+  "schedule": {
+    "tuesday": ["13:00-14:50"],
+    "thursday": ["13:00-14:50"]
+  }
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Section başarıyla oluşturuldu",
+  "data": { ... }
+}
+```
+
+---
+
+#### 10.2.4 Section Güncelleme (Admin)
+
+**Endpoint:** `PUT /api/v1/sections/{id}`
+
+**Açıklama:** Section bilgilerini günceller.
+
+**Authentication:** Gerekli (JWT - ADMIN rolü)
+
+**Request Body:**
+```json
+{
+  "capacity": 40,
+  "classroomId": 3,
+  "schedule": {
+    "monday": ["11:00-12:50"],
+    "wednesday": ["11:00-12:50"]
+  }
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Section başarıyla güncellendi",
+  "data": { ... }
+}
+```
+
+---
+
+### 10.3 Ders Kayıt (Enrollments)
+
+#### 10.3.1 Derse Kayıt Olma (Student)
+
+**Endpoint:** `POST /api/v1/enrollments`
+
+**Açıklama:** Öğrenci derse kayıt olur. Önkoşul kontrolü, çakışma kontrolü ve kapasite kontrolü yapılır.
+
+**Authentication:** Gerekli (JWT - STUDENT rolü)
+
+**Request Body:**
+```json
+{
+  "sectionId": 1
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Derse kayıt başarılı",
+  "data": {
+    "id": 1,
+    "studentId": 10,
+    "sectionId": 1,
+    "courseCode": "CSE101",
+    "courseName": "Programlamaya Giriş",
+    "sectionNumber": "01",
+    "status": "ENROLLED",
+    "enrollmentDate": "2025-12-15T10:30:00"
+  }
+}
+```
+
+**Hata Response'ları:**
+
+**400 Bad Request - Önkoşul sağlanmadı:**
+```json
+{
+  "success": false,
+  "message": "Önkoşul dersleri tamamlanmamış",
+  "error": {
+    "code": "PREREQUISITE_NOT_MET",
+    "details": {
+      "missingPrerequisites": [
+        {
+          "code": "MAT101",
+          "name": "Matematik I"
+        }
+      ]
+    }
+  }
+}
+```
+
+**409 Conflict - Ders programı çakışması:**
+```json
+{
+  "success": false,
+  "message": "Ders programı çakışması tespit edildi",
+  "error": {
+    "code": "SCHEDULE_CONFLICT",
+    "details": {
+      "conflictingCourse": {
+        "code": "CSE102",
+        "name": "Veri Yapıları",
+        "conflictDay": "monday",
+        "conflictTime": "09:00-10:50"
+      }
+    }
+  }
+}
+```
+
+**400 Bad Request - Kapasite dolu:**
+```json
+{
+  "success": false,
+  "message": "Ders kapasitesi dolu",
+  "error": {
+    "code": "SECTION_FULL"
+  }
+}
+```
+
+---
+
+#### 10.3.2 Dersi Bırakma (Student)
+
+**Endpoint:** `DELETE /api/v1/enrollments/{id}`
+
+**Açıklama:** Derse kaydı iptal eder. Drop period (ilk 4 hafta) kontrolü yapılır.
+
+**Authentication:** Gerekli (JWT - STUDENT rolü)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Ders bırakma işlemi başarılı"
+}
+```
+
+**Hata Response:**
+
+**400 Bad Request - Drop period geçti:**
+```json
+{
+  "success": false,
+  "message": "Ders bırakma süresi geçmiş",
+  "error": {
+    "code": "DROP_PERIOD_EXPIRED"
+  }
+}
+```
+
+---
+
+#### 10.3.3 Kayıtlı Derslerim (Student)
+
+**Endpoint:** `GET /api/v1/enrollments/my-courses`
+
+**Açıklama:** Öğrencinin kayıtlı olduğu dersleri listeler.
+
+**Authentication:** Gerekli (JWT - STUDENT rolü)
+
+**Query Parameters:**
+- `semester` (Enum, optional) - Dönem filtresi
+- `year` (Integer, optional) - Yıl filtresi
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "enrollmentId": 1,
+      "courseId": 1,
+      "courseCode": "CSE101",
+      "courseName": "Programlamaya Giriş",
+      "sectionId": 1,
+      "sectionNumber": "01",
+      "credits": 4,
+      "instructorName": "Prof. Dr. Ayşe Demir",
+      "schedule": {
+        "monday": ["09:00-10:50"],
+        "wednesday": ["09:00-10:50"]
+      },
+      "classroomName": "A-101",
+      "status": "ENROLLED",
+      "midtermGrade": null,
+      "finalGrade": null,
+      "letterGrade": null,
+      "attendancePercentage": 85.5,
+      "attendanceStatus": "OK"
+    }
+  ]
+}
+```
+
+---
+
+#### 10.3.4 Dersin Öğrenci Listesi (Faculty)
+
+**Endpoint:** `GET /api/v1/enrollments/students/{sectionId}`
+
+**Açıklama:** Belirtilen section'a kayıtlı öğrencileri listeler." Sadece dersin öğretim üyesi veya admin erişebilir.
+
+**Authentication:** Gerekli (JWT - FACULTY veya ADMIN rolü)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "enrollmentId": 1,
+      "studentId": 10,
+      "studentNumber": "20210001",
+      "firstName": "Ahmet",
+      "lastName": "Kaya",
+      "email": "ahmet.kaya@smartcampus.edu.tr",
+      "status": "ENROLLED",
+      "midtermGrade": 75.5,
+      "finalGrade": null,
+      "letterGrade": null,
+      "attendancePercentage": 90.0
+    }
+  ]
+}
+```
+
+---
+
+### 10.4 Not Yönetimi (Grades)
+
+#### 10.4.1 Notlarım (Student)
+
+**Endpoint:** `GET /api/v1/grades/my-grades`
+
+**Açıklama:** Öğrencinin tüm notlarını getirir.
+
+**Authentication:** Gerekli (JWT - STUDENT rolü)
+
+**Query Parameters:**
+- `semester` (Enum, optional) - Dönem filtresi
+- `year` (Integer, optional) - Yıl filtresi
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "currentSemester": {
+      "semester": "FALL",
+      "year": 2025,
+      "courses": [
+        {
+          "courseCode": "CSE101",
+          "courseName": "Programlamaya Giriş",
+          "credits": 4,
+          "midtermGrade": 75.5,
+          "finalGrade": 82.0,
+          "letterGrade": "BB",
+          "gradePoint": 3.0
+        }
+      ],
+      "gpa": 3.25,
+      "totalCredits": 18
+    },
+    "cgpa": 3.18,
+    "totalEarnedCredits": 72
+  }
+}
+```
+
+---
+
+#### 10.4.2 Transkript (Student)
+
+**Endpoint:** `GET /api/v1/grades/transcript`
+
+**Açıklama:** Öğrencinin transkriptini JSON formatında getirir.
+
+**Authentication:** Gerekli (JWT - STUDENT rolü)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "student": {
+      "studentNumber": "20210001",
+      "firstName": "Ahmet",
+      "lastName": "Kaya",
+      "department": "Bilgisayar Mühendisliği",
+      "faculty": "Mühendislik Fakültesi"
+    },
+    "semesters": [
+      {
+        "semester": "FALL",
+        "year": 2024,
+        "courses": [
+          {
+            "code": "MAT101",
+            "name": "Matematik I",
+            "credits": 4,
+            "letterGrade": "AA",
+            "gradePoint": 4.0
+          }
+        ],
+        "gpa": 3.50,
+        "totalCredits": 20
+      }
+    ],
+    "cgpa": 3.18,
+    "totalEarnedCredits": 72,
+    "generatedAt": "2025-12-15T10:30:00"
+  }
+}
+```
+
+---
+
+#### 10.4.3 Transkript PDF (Student)
+
+**Endpoint:** `GET /api/v1/grades/transcript/pdf`
+
+**Açıklama:** Öğrencinin transkriptini PDF olarak indirir.
+
+**Authentication:** Gerekli (JWT - STUDENT rolü)
+
+**Response (200 OK):**
+- Content-Type: application/pdf
+- Content-Disposition: attachment; filename="transcript_20210001.pdf"
+
+---
+
+#### 10.4.4 Not Girişi (Faculty)
+
+**Endpoint:** `POST /api/v1/grades`
+
+**Açıklama:** Öğretim üyesi not girişi yapar. Harf notu ve grade point otomatik hesaplanır.
+
+**Authentication:** Gerekli (JWT - FACULTY rolü)
+
+**Request Body:**
+```json
+{
+  "enrollmentId": 1,
+  "midtermGrade": 75.5,
+  "finalGrade": 82.0
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Not başarıyla kaydedildi",
+  "data": {
+    "enrollmentId": 1,
+    "studentNumber": "20210001",
+    "midtermGrade": 75.5,
+    "finalGrade": 82.0,
+    "average": 79.9,
+    "letterGrade": "BB",
+    "gradePoint": 3.0
+  }
+}
+```
+
+**Not:** Harf notu hesaplama:
+- AA: 90-100 (4.0)
+- BA: 85-89 (3.5)
+- BB: 80-84 (3.0)
+- CB: 75-79 (2.5)
+- CC: 70-74 (2.0)
+- DC: 65-69 (1.5)
+- DD: 60-64 (1.0)
+- FF: 0-59 (0.0)
+
+---
+
+## 11. Part 2 - GPS Attendance Endpoints
+
+### 11.1 Yoklama Oturumları (Sessions)
+
+#### 11.1.1 Yoklama Oturumu Açma (Faculty)
+
+**Endpoint:** `POST /api/v1/attendance/sessions`
+
+**Açıklama:** Öğretim üyesi yoklama oturumu açar. QR kod ve GPS koordinatları otomatik oluşturulur.
+
+**Authentication:** Gerekli (JWT - FACULTY rolü)
+
+**Request Body:**
+```json
+{
+  "sectionId": 1,
+  "geofenceRadius": 15,
+  "durationMinutes": 30
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Yoklama oturumu başlatıldı",
+  "data": {
+    "id": 1,
+    "sectionId": 1,
+    "courseCode": "CSE101",
+    "courseName": "Programlamaya Giriş",
+    "sectionNumber": "01",
+    "date": "2025-12-15",
+    "startTime": "09:00:00",
+    "endTime": "09:30:00",
+    "latitude": 41.0082,
+    "longitude": 29.0186,
+    "geofenceRadius": 15,
+    "qrCode": "eyJzZXNzaW9uSWQiOjEsInRva2VuIjoiYWJjMTIzIn0=",
+    "qrCodeUrl": "https://api.qrserver.com/v1/create-qr-code/?data=...",
+    "status": "ACTIVE",
+    "enrolledCount": 35,
+    "presentCount": 0
+  }
+}
+```
+
+---
+
+#### 11.1.2 Oturum Detayları
+
+**Endpoint:** `GET /api/v1/attendance/sessions/{id}`
+
+**Açıklama:** Yoklama oturumunun detaylarını getirir.
+
+**Authentication:** Gerekli (JWT - FACULTY veya STUDENT rolü)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "sectionId": 1,
+    "courseCode": "CSE101",
+    "courseName": "Programlamaya Giriş",
+    "sectionNumber": "01",
+    "instructorName": "Prof. Dr. Ayşe Demir",
+    "date": "2025-12-15",
+    "startTime": "09:00:00",
+    "endTime": "09:30:00",
+    "latitude": 41.0082,
+    "longitude": 29.0186,
+    "geofenceRadius": 15,
+    "status": "ACTIVE",
+    "qrCode": "eyJzZXNzaW9uSWQiOjEsInRva2VuIjoiYWJjMTIzIn0=",
+    "enrolledCount": 35,
+    "presentCount": 28,
+    "classroomName": "A-101"
+  }
+}
+```
+
+---
+
+#### 11.1.3 Oturumu Kapatma (Faculty)
+
+**Endpoint:** `PUT /api/v1/attendance/sessions/{id}/close`
+
+**Açıklama:** Aktif yoklama oturumunu kapatır.
+
+**Authentication:** Gerekli (JWT - FACULTY rolü)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Yoklama oturumu kapatıldı",
+  "data": {
+    "id": 1,
+    "status": "CLOSED",
+    "presentCount": 32,
+    "absentCount": 3
+  }
+}
+```
+
+---
+
+#### 11.1.4 Benim Oturumlarım (Faculty)
+
+**Endpoint:** `GET /api/v1/attendance/sessions/my-sessions`
+
+**Açıklama:** Öğretim üyesinin açtığı yoklama oturumlarını listeler.
+
+**Authentication:** Gerekli (JWT - FACULTY rolü)
+
+**Query Parameters:**
+- `sectionId` (Long, optional) - Section filtresi
+- `startDate` (Date, optional) - Başlangıç tarihi
+- `endDate` (Date, optional) - Bitiş tarihi
+- `status` (Enum, optional) - Durum filtresi (ACTIVE, CLOSED)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "sectionId": 1,
+        "courseCode": "CSE101",
+        "date": "2025-12-15",
+        "startTime": "09:00:00",
+        "status": "CLOSED",
+        "presentCount": 32,
+        "enrolledCount": 35,
+        "attendanceRate": 91.4
+      }
+    ]
+  }
+}
+```
+
+---
+
+#### 11.1.5 Yoklama Raporu (Faculty)
+
+**Endpoint:** `GET /api/v1/attendance/report/{sectionId}`
+
+**Açıklama:** Belirtilen section için yoklama raporunu getirir.
+
+**Authentication:** Gerekli (JWT - FACULTY rolü)
+
+**Query Parameters:**
+- `startDate` (Date, optional) - Başlangıç tarihi
+- `endDate` (Date, optional) - Bitiş tarihi
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "sectionId": 1,
+    "courseCode": "CSE101",
+    "courseName": "Programlamaya Giriş",
+    "totalSessions": 14,
+    "students": [
+      {
+        "studentId": 10,
+        "studentNumber": "20210001",
+        "firstName": "Ahmet",
+        "lastName": "Kaya",
+        "presentCount": 12,
+        "absentCount": 2,
+        "excusedCount": 1,
+        "attendancePercentage": 92.8,
+        "status": "OK",
+        "isFlagged": false
+      },
+      {
+        "studentId": 11,
+        "studentNumber": "20210002",
+        "firstName": "Mehmet",
+        "lastName": "Yılmaz",
+        "presentCount": 8,
+        "absentCount": 6,
+        "excusedCount": 0,
+        "attendancePercentage": 57.1,
+        "status": "CRITICAL",
+        "isFlagged": true,
+        "flagReason": "GPS_SPOOFING_SUSPECTED"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 11.2 Yoklama Verme (Check-in)
+
+#### 11.2.1 GPS ile Yoklama Verme (Student)
+
+**Endpoint:** `POST /api/v1/attendance/sessions/{id}/checkin`
+
+**Açıklama:** Öğrenci GPS koordinatları ile yoklama verir. Haversine formülü ile mesafe hesaplanır. GPS spoofing kontrolü yapılır.
+
+**Authentication:** Gerekli (JWT - STUDENT rolü)
+
+**Request Body:**
+```json
+{
+  "latitude": 41.0083,
+  "longitude": 29.0187,
+  "accuracy": 5.0
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Yoklama başarıyla verildi",
+  "data": {
+    "sessionId": 1,
+    "checkInTime": "2025-12-15T09:05:23",
+    "distance": 12.5,
+    "status": "PRESENT"
+  }
+}
+```
+
+**Hata Response'ları:**
+
+**400 Bad Request - Oturum aktif değil:**
+```json
+{
+  "success": false,
+  "message": "Yoklama oturumu aktif değil",
+  "error": {
+    "code": "SESSION_NOT_ACTIVE"
+  }
+}
+```
+
+**400 Bad Request - Konum dışında:**
+```json
+{
+  "success": false,
+  "message": "Derslik konumunun dışındasınız",
+  "error": {
+    "code": "OUT_OF_GEOFENCE",
+    "details": {
+      "distance": 45.2,
+      "allowedRadius": 15,
+      "message": "Derslikten 45.2 metre uzaktasınız. Maksimum mesafe: 15 metre"
+    }
+  }
+}
+```
+
+**400 Bad Request - Zaten yoklama verilmiş:**
+```json
+{
+  "success": false,
+  "message": "Bu oturuma zaten yoklama verdiniz",
+  "error": {
+    "code": "ALREADY_CHECKED_IN"
+  }
+}
+```
+
+**403 Forbidden - GPS spoofing tespit edildi:**
+```json
+{
+  "success": false,
+  "message": "Şüpheli konum verisi tespit edildi",
+  "error": {
+    "code": "GPS_SPOOFING_DETECTED",
+    "details": {
+      "reason": "IMPOSSIBLE_TRAVEL",
+      "message": "Son konumunuzdan bu konuma belirtilen sürede ulaşmanız mümkün değil"
+    }
+  }
+}
+```
+
+---
+
+#### 11.2.2 QR Kod ile Yoklama Verme (Student)
+
+**Endpoint:** `POST /api/v1/attendance/sessions/{id}/checkin-qr`
+
+**Açıklama:** Öğrenci QR kod ve GPS koordinatları ile yoklama verir. QR kod 5 saniyede bir yenilenir.
+
+**Authentication:** Gerekli (JWT - STUDENT rolü)
+
+**Request Body:**
+```json
+{
+  "qrCode": "eyJzZXNzaW9uSWQiOjEsInRva2VuIjoiYWJjMTIzIn0=",
+  "latitude": 41.0083,
+  "longitude": 29.0187,
+  "accuracy": 5.0
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Yoklama başarıyla verildi",
+  "data": {
+    "sessionId": 1,
+    "checkInTime": "2025-12-15T09:05:23",
+    "method": "QR_CODE",
+    "status": "PRESENT"
+  }
+}
+```
+
+---
+
+#### 11.2.3 Yoklama Durumum (Student)
+
+**Endpoint:** `GET /api/v1/attendance/my-attendance`
+
+**Açıklama:** Öğrencinin tüm dersler için yoklama durumunu getirir.
+
+**Authentication:** Gerekli (JWT - STUDENT rolü)
+
+**Query Parameters:**
+- `semester` (Enum, optional) - Dönem filtresi
+- `year` (Integer, optional) - Yıl filtresi
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "courseCode": "CSE101",
+      "courseName": "Programlamaya Giriş",
+      "sectionNumber": "01",
+      "totalSessions": 14,
+      "presentCount": 12,
+      "absentCount": 2,
+      "excusedCount": 1,
+      "attendancePercentage": 92.8,
+      "status": "OK",
+      "sessions": [
+        {
+          "sessionId": 1,
+          "date": "2025-12-15",
+          "status": "PRESENT",
+          "checkInTime": "09:05:23"
+        },
+        {
+          "sessionId": 2,
+          "date": "2025-12-17",
+          "status": "ABSENT",
+          "excuseStatus": "APPROVED"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Not:** Yoklama durumları:
+- `OK`: Devamsızlık %20'nin altında
+- `WARNING`: Devamsızlık %20-%30 arasında
+- `CRITICAL`: Devamsızlık %30'un üzerinde
+
+---
+
+### 11.3 Mazeret Yönetimi (Excuse Requests)
+
+#### 11.3.1 Mazeret Bildirme (Student)
+
+**Endpoint:** `POST /api/v1/attendance/excuse-requests`
+
+**Açıklama:** Öğrenci mazeret bildirimi yapar. Belge yüklenebilir.
+
+**Authentication:** Gerekli (JWT - STUDENT rolü)
+
+**Request Headers:**
+```
+Content-Type: multipart/form-data
+```
+
+**Request Body (Form Data):**
+- `sessionId` (Long, required) - Yoklama oturumu ID'si
+- `reason` (String, required) - Mazeret açıklaması
+- `document` (File, optional) - Mazeret belgesi (PDF, JPG, PNG)
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Mazeret başvurusu alındı",
+  "data": {
+    "id": 1,
+    "sessionId": 5,
+    "courseCode": "CSE101",
+    "date": "2025-12-13",
+    "reason": "Sağlık raporu nedeniyle...",
+    "documentUrl": "https://...",
+    "status": "PENDING",
+    "createdAt": "2025-12-15T10:30:00"
+  }
+}
+```
+
+---
+
+#### 11.3.2 Mazeret Listesi (Faculty)
+
+**Endpoint:** `GET /api/v1/attendance/excuse-requests`
+
+**Açıklama:** Öğretim üyesinin derslerine ait mazeret başvurularını listeler.
+
+**Authentication:** Gerekli (JWT - FACULTY rolü)
+
+**Query Parameters:**
+- `sectionId` (Long, optional) - Section filtresi
+- `status` (Enum, optional) - Durum filtresi (PENDING, APPROVED, REJECTED)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "studentId": 10,
+        "studentNumber": "20210001",
+        "studentName": "Ahmet Kaya",
+        "sessionId": 5,
+        "courseCode": "CSE101",
+        "date": "2025-12-13",
+        "reason": "Sağlık raporu nedeniyle...",
+        "documentUrl": "https://...",
+        "status": "PENDING",
+        "createdAt": "2025-12-15T10:30:00"
+      }
+    ]
+  }
+}
+```
+
+---
+
+#### 11.3.3 Mazeret Onaylama (Faculty)
+
+**Endpoint:** `PUT /api/v1/attendance/excuse-requests/{id}/approve`
+
+**Açıklama:** Mazeret başvurusunu onaylar.
+
+**Authentication:** Gerekli (JWT - FACULTY rolü)
+
+**Request Body:**
+```json
+{
+  "notes": "Sağlık raporu geçerli kabul edildi"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Mazeret onaylandı",
+  "data": {
+    "id": 1,
+    "status": "APPROVED",
+    "reviewedAt": "2025-12-15T14:30:00",
+    "notes": "Sağlık raporu geçerli kabul edildi"
+  }
+}
+```
+
+---
+
+#### 11.3.4 Mazeret Reddetme (Faculty)
+
+**Endpoint:** `PUT /api/v1/attendance/excuse-requests/{id}/reject`
+
+**Açıklama:** Mazeret başvurusunu reddeder.
+
+**Authentication:** Gerekli (JWT - FACULTY rolü)
+
+**Request Body:**
+```json
+{
+  "notes": "Belge geçersiz"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Mazeret reddedildi",
+  "data": {
+    "id": 1,
+    "status": "REJECTED",
+    "reviewedAt": "2025-12-15T14:30:00",
+    "notes": "Belge geçersiz"
+  }
+}
+```
+
+---
+
+### 11.4 Derslik Yönetimi (Classrooms)
+
+#### 11.4.1 Derslik Listesi
+
+**Endpoint:** `GET /api/v1/classrooms`
+
+**Açıklama:** Tüm derslikleri listeler.
+
+**Authentication:** Gerekli (JWT)
+
+**Query Parameters:**
+- `building` (String, optional) - Bina filtresi
+- `minCapacity` (Integer, optional) - Minimum kapasite
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "building": "A Blok",
+      "roomNumber": "101",
+      "capacity": 50,
+      "latitude": 41.0082,
+      "longitude": 29.0186,
+      "features": ["projector", "whiteboard", "air_conditioning"]
+    }
+  ]
+}
+```
+
+---
+
+#### 11.4.2 Derslik Detayı
+
+**Endpoint:** `GET /api/v1/classrooms/{id}`
+
+**Açıklama:** Belirtilen dersliğin detaylarını getirir.
+
+**Authentication:** Gerekli (JWT)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "building": "A Blok",
+    "roomNumber": "101",
+    "capacity": 50,
+    "latitude": 41.0082,
+    "longitude": 29.0186,
+    "features": ["projector", "whiteboard", "air_conditioning"]
+  }
+}
+```
+
+---
+
+## 12. Part 2 - Error Codes (Akademik & Yoklama)
+
+### 12.1 Academic Management Hata Kodları
+
+| Kod | Açıklama |
+|-----|----------|
+| `COURSE_NOT_FOUND` | Ders bulunamadı |
+| `SECTION_NOT_FOUND` | Section bulunamadı |
+| `ENROLLMENT_NOT_FOUND` | Kayıt bulunamadı |
+| `PREREQUISITE_NOT_MET` | Önkoşul sağlanmadı |
+| `SCHEDULE_CONFLICT` | Ders programı çakışması |
+| `SECTION_FULL` | Ders kapasitesi dolu |
+| `ALREADY_ENROLLED` | Zaten kayıtlı |
+| `DROP_PERIOD_EXPIRED` | Ders bırakma süresi geçmiş |
+| `NOT_INSTRUCTOR_OF_SECTION` | Bu dersin öğretim üyesi değilsiniz |
+| `INVALID_GRADE` | Geçersiz not değeri |
+
+### 12.2 Attendance Hata Kodları
+
+| Kod | Açıklama |
+|-----|----------|
+| `SESSION_NOT_FOUND` | Yoklama oturumu bulunamadı |
+| `SESSION_NOT_ACTIVE` | Yoklama oturumu aktif değil |
+| `SESSION_EXPIRED` | Yoklama oturumu süresi dolmuş |
+| `ALREADY_CHECKED_IN` | Zaten yoklama verilmiş |
+| `OUT_OF_GEOFENCE` | Derslik konumunun dışında |
+| `GPS_SPOOFING_DETECTED` | GPS spoofing tespit edildi |
+| `INVALID_QR_CODE` | Geçersiz QR kod |
+| `QR_CODE_EXPIRED` | QR kod süresi dolmuş |
+| `NOT_ENROLLED_IN_SECTION` | Bu derse kayıtlı değilsiniz |
+| `EXCUSE_NOT_FOUND` | Mazeret başvurusu bulunamadı |
+| `EXCUSE_ALREADY_REVIEWED` | Mazeret zaten değerlendirilmiş |
+| `CLASSROOM_NOT_FOUND` | Derslik bulunamadı |
+
+---
+
+## 13. Part 2 - Algoritma Açıklamaları
+
+### 13.1 Haversine Formülü (GPS Mesafe Hesaplama)
+
+İki GPS koordinatı arasındaki mesafeyi metre cinsinden hesaplar:
+
+```
+distance = 2 * R * arcsin(sqrt(sin²((lat2-lat1)/2) + cos(lat1) * cos(lat2) * sin²((lon2-lon1)/2)))
+
+R = 6371000 (Dünya yarıçapı, metre)
+lat1, lat2 = Enlem (radyan)
+lon1, lon2 = Boylam (radyan)
+```
+
+**Örnek:**
+- Derslik: 41.0082°N, 29.0186°E
+- Öğrenci: 41.0083°N, 29.0187°E
+- Mesafe: ~12.5 metre
+
+---
+
+### 13.2 Önkoşul Kontrolü (Prerequisite Checking)
+
+Recursive (DFS) algoritma ile tüm önkoşul zinciri kontrol edilir:
+
+```
+function checkPrerequisites(courseId, studentId):
+    prerequisites = getPrerequisites(courseId)
+    for each prereq in prerequisites:
+        if not hasCompletedCourse(studentId, prereq.id):
+            return false
+        if not checkPrerequisites(prereq.id, studentId):
+            return false
+    return true
+```
+
+---
+
+### 13.3 Ders Programı Çakışma Kontrolü
+
+İki zaman diliminin çakışıp çakışmadığını kontrol eder:
+
+```
+function hasTimeOverlap(schedule1, schedule2):
+    for each day in schedule1:
+        if day exists in schedule2:
+            for each slot1 in schedule1[day]:
+                for each slot2 in schedule2[day]:
+                    if overlaps(slot1, slot2):
+                        return true
+    return false
+
+function overlaps(slot1, slot2):
+    return slot1.start < slot2.end AND slot2.start < slot1.end
+```
+
+---
+
+### 13.4 GPS Spoofing Tespiti
+
+Çoklu kontrol ile sahte konum tespiti:
+
+1. **IP Kontrolü**: Kampüs IP aralığı kontrolü
+2. **Velocity Check**: Önceki konumdan impossible travel tespiti
+3. **Accuracy Check**: GPS doğruluk değeri kontrolü (<50m)
+4. **Mock Location Flag**: Cihazın mock location ayarı kontrolü
+
+```
+function detectSpoofing(studentId, latitude, longitude, accuracy):
+    // IP kontrolü
+    if not isFromCampusNetwork(request.ip):
+        return {flagged: true, reason: "OUTSIDE_CAMPUS_NETWORK"}
+    
+    // Önceki konum kontrolü
+    lastRecord = getLastAttendanceRecord(studentId)
+    if lastRecord:
+        timeDiff = now - lastRecord.time
+        distance = haversine(lastRecord.lat, lastRecord.lon, latitude, longitude)
+        maxPossibleDistance = timeDiff.seconds * MAX_WALKING_SPEED
+        if distance > maxPossibleDistance:
+            return {flagged: true, reason: "IMPOSSIBLE_TRAVEL"}
+    
+    // Accuracy kontrolü
+    if accuracy > 50:
+        return {flagged: true, reason: "LOW_GPS_ACCURACY"}
+    
+    return {flagged: false}
+```
+
+---
+
+## 14. Versiyon Geçmişi
 
 | Versiyon | Tarih | Değişiklikler |
 |----------|-------|---------------|
 | 1.0 | 2025-12-09 | İlk versiyon - Part 1 endpoint'leri |
+| 2.0 | 2025-12-15 | Part 2 - Academic Management & GPS Attendance endpoint'leri eklendi |
 
 ---
 
 **Hazırlayan:** Smart Campus Backend Team  
-**Son Güncelleme:** 9 Aralık 2025  
+**Son Güncelleme:** 15 Aralık 2025  
 **API Versiyonu:** v1
-
