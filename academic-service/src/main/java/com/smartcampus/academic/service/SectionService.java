@@ -14,6 +14,8 @@ public interface SectionService {
 
     CourseSectionResponse getSectionById(Long id);
 
+    List<CourseSectionResponse> getAllSections();
+
     List<CourseSectionResponse> getSectionsByCourse(Long courseId);
 
     List<CourseSectionResponse> getSectionsBySemesterAndYear(String semester, Integer year);

@@ -35,6 +35,12 @@ public class SectionController {
                 .body(ApiResponse.success("Section created successfully", section));
     }
 
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<CourseSectionResponse>>> getAllSections() {
+        List<CourseSectionResponse> sections = sectionService.getAllSections();
+        return ResponseEntity.ok(ApiResponse.success(sections));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<CourseSectionResponse>> getSectionById(@PathVariable Long id) {
         CourseSectionResponse section = sectionService.getSectionById(id);

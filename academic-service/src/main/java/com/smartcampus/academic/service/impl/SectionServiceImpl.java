@@ -88,6 +88,14 @@ public class SectionServiceImpl implements SectionService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<CourseSectionResponse> getAllSections() {
+        return sectionRepository.findAll().stream()
+                .map(section -> CourseSectionResponse.from(section, getInstructorName(section.getInstructor())))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<CourseSectionResponse> getSectionsByCourse(Long courseId) {
         return sectionRepository.findByCourseId(courseId).stream()
                 .map(section -> CourseSectionResponse.from(section, getInstructorName(section.getInstructor())))
@@ -158,6 +166,9 @@ public class SectionServiceImpl implements SectionService {
     }
 
     private String getInstructorName(Faculty instructor) {
+        if (instructor == null || instructor.getUserId() == null) {
+            return "Unknown Instructor";
+        }
         return userRepository.findById(instructor.getUserId())
                 .map(User::getFullName)
                 .orElse("Unknown Instructor");
