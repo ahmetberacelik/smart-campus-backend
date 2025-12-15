@@ -12,11 +12,15 @@ services:
       - AUTH_SERVICE_PORT=${AUTH_SERVICE_PORT}
       - ACADEMIC_SERVICE_HOST=academic-service
       - ACADEMIC_SERVICE_PORT=8082
+      - ATTENDANCE_SERVICE_HOST=attendance-service
+      - ATTENDANCE_SERVICE_PORT=8083
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
     depends_on:
       auth-service:
         condition: service_healthy
       academic-service:
+        condition: service_healthy
+      attendance-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
@@ -82,6 +86,37 @@ services:
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - smart_campus_network
+    restart: unless-stopped
+
+  # Attendance Service
+  attendance-service:
+    build:
+      context: .
+      dockerfile: attendance-service/Dockerfile
+    container_name: smart_campus_attendance
+    ports:
+      - "8083:8083"
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - DO_SPACES_KEY=${DO_SPACES_KEY}
+      - DO_SPACES_SECRET=${DO_SPACES_SECRET}
+      - DO_SPACES_ENDPOINT=${DO_SPACES_ENDPOINT}
+      - DO_SPACES_BUCKET=${DO_SPACES_BUCKET}
+      - DO_SPACES_REGION=${DO_SPACES_REGION}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8083/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3

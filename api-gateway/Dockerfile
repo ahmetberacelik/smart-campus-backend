@@ -7,9 +7,10 @@ COPY pom.xml ./pom.xml
 COPY api-gateway/pom.xml ./api-gateway/pom.xml
 COPY auth-service/pom.xml ./auth-service/pom.xml
 COPY academic-service/pom.xml ./academic-service/pom.xml
+COPY attendance-service/pom.xml ./attendance-service/pom.xml
 
 # Create empty source directories for other modules to satisfy Maven
-RUN mkdir -p auth-service/src/main/java academic-service/src/main/java
+RUN mkdir -p auth-service/src/main/java academic-service/src/main/java attendance-service/src/main/java
 
 # Copy api-gateway source code
 COPY api-gateway/src ./api-gateway/src

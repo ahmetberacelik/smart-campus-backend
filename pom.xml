@@ -16,6 +16,7 @@
         <module>api-gateway</module>
         <module>auth-service</module>
         <module>academic-service</module>
+        <module>attendance-service</module>
     </modules>
 
     <parent>

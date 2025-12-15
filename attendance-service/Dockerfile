@@ -10,13 +10,13 @@ COPY academic-service/pom.xml ./academic-service/pom.xml
 COPY attendance-service/pom.xml ./attendance-service/pom.xml
 
 # Create empty source directories for other modules to satisfy Maven
-RUN mkdir -p api-gateway/src/main/java auth-service/src/main/java attendance-service/src/main/java
+RUN mkdir -p api-gateway/src/main/java auth-service/src/main/java academic-service/src/main/java
 
-# Copy academic-service source code
-COPY academic-service/src ./academic-service/src
+# Copy attendance-service source code
+COPY attendance-service/src ./attendance-service/src
 
 # Build the application
-RUN mvn clean package -pl academic-service -am -DskipTests
+RUN mvn clean package -pl attendance-service -am -DskipTests
 
 # Runtime stage
 FROM eclipse-temurin:17-jre-alpine
@@ -27,10 +27,10 @@ RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 
 # Copy jar from build stage
-COPY --from=build /app/academic-service/target/*.jar app.jar
+COPY --from=build /app/attendance-service/target/*.jar app.jar
 
 # Expose port
-EXPOSE 8082
+EXPOSE 8083
 
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
