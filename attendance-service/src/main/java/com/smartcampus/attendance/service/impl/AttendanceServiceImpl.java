@@ -10,8 +10,11 @@ import com.smartcampus.attendance.exception.ForbiddenException;
 import com.smartcampus.attendance.exception.ResourceNotFoundException;
 import com.smartcampus.attendance.repository.AttendanceRecordRepository;
 import com.smartcampus.attendance.repository.AttendanceSessionRepository;
+import com.smartcampus.attendance.repository.CourseSectionInfoRepository;
+import com.smartcampus.attendance.repository.ExcuseRequestRepository;
 import com.smartcampus.attendance.service.AttendanceService;
 import com.smartcampus.attendance.util.GpsUtils;
+import com.smartcampus.attendance.util.IpValidator;
 import com.smartcampus.attendance.util.QrCodeGenerator;
 import com.smartcampus.attendance.util.SpoofingDetector;
 import lombok.RequiredArgsConstructor;
@@ -34,9 +37,12 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     private final AttendanceSessionRepository sessionRepository;
     private final AttendanceRecordRepository recordRepository;
+    private final ExcuseRequestRepository excuseRequestRepository;
+    private final CourseSectionInfoRepository courseSectionInfoRepository;
     private final GpsUtils gpsUtils;
     private final QrCodeGenerator qrCodeGenerator;
     private final SpoofingDetector spoofingDetector;
+    private final IpValidator ipValidator;
 
     @Value("${attendance.default-geofence-radius:15}")
     private int defaultGeofenceRadius;
@@ -189,6 +195,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Yoklama oturumu", "id", sessionId));
 
         validateSession(session);
+        validateCampusNetwork(ipAddress);
         checkAlreadyCheckedIn(sessionId, studentId);
 
         double distance = gpsUtils.calculateDistance(
@@ -202,6 +209,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                             "allowedRadius", session.getGeofenceRadius(),
                             "message", String.format("Derslikten %.1f metre uzaktasınız. Maksimum mesafe: %d metre",
                                     distance, session.getGeofenceRadius())));
+
         }
 
         Optional<AttendanceRecord> lastRecord = recordRepository.findLastRecordByStudentId(studentId);
@@ -248,6 +256,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Yoklama oturumu", "id", sessionId));
 
         validateSession(session);
+        validateCampusNetwork(ipAddress);
         checkAlreadyCheckedIn(sessionId, studentId);
 
         try {
@@ -301,14 +310,104 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     public List<MyAttendanceResponse> getMyAttendance(Long studentId, String semester, Integer year) {
-        List<AttendanceRecord> records = recordRepository.findByStudentId(studentId);
-
-        Map<Long, List<AttendanceRecord>> recordsBySession = new HashMap<>();
-        for (AttendanceRecord record : records) {
-            recordsBySession.computeIfAbsent(record.getSessionId(), k -> new ArrayList<>()).add(record);
+        List<Long> sectionIds = sessionRepository.findDistinctSectionIdsByStudentId(studentId);
+        if (sectionIds.isEmpty()) {
+            return Collections.emptyList();
         }
 
-        return Collections.emptyList();
+        Map<Long, CourseSectionInfo> sectionInfoMap = courseSectionInfoRepository.findBySectionIds(sectionIds);
+        
+        if (semester != null && year != null) {
+            sectionIds = sectionIds.stream()
+                    .filter(id -> {
+                        CourseSectionInfo info = sectionInfoMap.get(id);
+                        return info != null && semester.equals(info.getSemester()) && year.equals(info.getYear());
+                    })
+                    .toList();
+        }
+
+        List<MyAttendanceResponse> responses = new ArrayList<>();
+
+        for (Long sectionId : sectionIds) {
+            CourseSectionInfo sectionInfo = sectionInfoMap.get(sectionId);
+            if (sectionInfo == null) continue;
+
+            List<AttendanceSession> sessions = sessionRepository.findBySectionIdOrderByDateDesc(sectionId);
+            if (sessions.isEmpty()) continue;
+
+            List<Long> sessionIds = sessions.stream().map(AttendanceSession::getId).toList();
+            List<AttendanceRecord> records = recordRepository.findBySessionIdsAndStudentId(sessionIds, studentId);
+            Map<Long, AttendanceRecord> recordMap = new HashMap<>();
+            for (AttendanceRecord r : records) {
+                recordMap.put(r.getSessionId(), r);
+            }
+
+            List<ExcuseRequest> excuses = excuseRequestRepository.findByStudentId(studentId);
+            Map<Long, ExcuseRequest> excuseMap = new HashMap<>();
+            for (ExcuseRequest e : excuses) {
+                excuseMap.put(e.getAttendanceRecordId(), e);
+            }
+
+            int presentCount = 0;
+            int absentCount = 0;
+            int excusedCount = 0;
+            List<MyAttendanceResponse.SessionAttendance> sessionAttendances = new ArrayList<>();
+
+            for (AttendanceSession session : sessions) {
+                AttendanceRecord record = recordMap.get(session.getId());
+                String status;
+                LocalTime checkInTime = null;
+                String excuseStatus = null;
+
+                if (record != null) {
+                    status = record.getStatus().name();
+                    checkInTime = record.getCheckInTime() != null ? record.getCheckInTime().toLocalTime() : null;
+                    
+                    if (record.getStatus() == AttendanceStatus.PRESENT) {
+                        presentCount++;
+                    } else if (record.getStatus() == AttendanceStatus.EXCUSED) {
+                        excusedCount++;
+                    }
+
+                    ExcuseRequest excuse = excuseMap.get(record.getId());
+                    if (excuse != null) {
+                        excuseStatus = excuse.getStatus().name();
+                    }
+                } else {
+                    status = "ABSENT";
+                    absentCount++;
+                }
+
+                sessionAttendances.add(MyAttendanceResponse.SessionAttendance.builder()
+                        .sessionId(session.getId())
+                        .date(session.getSessionDate())
+                        .startTime(session.getStartTime())
+                        .status(status)
+                        .checkInTime(checkInTime)
+                        .excuseStatus(excuseStatus)
+                        .build());
+            }
+
+            int totalSessions = sessions.size();
+            double percentage = totalSessions > 0 
+                    ? ((double) (presentCount + excusedCount) / totalSessions) * 100 
+                    : 0;
+
+            responses.add(MyAttendanceResponse.builder()
+                    .courseCode(sectionInfo.getCourseCode())
+                    .courseName(sectionInfo.getCourseName())
+                    .sectionNumber(sectionInfo.getSectionNumber())
+                    .totalSessions(totalSessions)
+                    .presentCount(presentCount)
+                    .absentCount(absentCount)
+                    .excusedCount(excusedCount)
+                    .attendancePercentage(Math.round(percentage * 10) / 10.0)
+                    .status(getAttendanceStatusString(percentage))
+                    .sessions(sessionAttendances)
+                    .build());
+        }
+
+        return responses;
     }
 
     @Override
@@ -331,6 +430,15 @@ public class AttendanceServiceImpl implements AttendanceService {
         session = sessionRepository.save(session);
 
         return mapToSessionResponse(session);
+    }
+
+    private void validateCampusNetwork(String ipAddress) {
+        if (!ipValidator.isOnCampusNetwork(ipAddress)) {
+            throw new ForbiddenException("Yoklama vermek için kampüs ağına bağlı olmalısınız",
+                    "NOT_ON_CAMPUS_NETWORK",
+                    Map.of("ipAddress", ipAddress != null ? ipAddress : "unknown",
+                           "message", "Lütfen kampüs WiFi ağına bağlanın ve tekrar deneyin"));
+        }
     }
 
     private void validateSession(AttendanceSession session) {

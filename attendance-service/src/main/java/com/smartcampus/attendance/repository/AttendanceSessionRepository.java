@@ -58,4 +58,11 @@ public interface AttendanceSessionRepository extends JpaRepository<AttendanceSes
     List<AttendanceSession> findActiveSessions(
             @Param("sectionIds") List<Long> sectionIds,
             @Param("status") SessionStatus status);
+
+    @Query("SELECT DISTINCT s.sectionId FROM AttendanceSession s WHERE s.id IN " +
+            "(SELECT r.sessionId FROM AttendanceRecord r WHERE r.studentId = :studentId)")
+    List<Long> findDistinctSectionIdsByStudentId(@Param("studentId") Long studentId);
+
+    @Query("SELECT s FROM AttendanceSession s WHERE s.sectionId = :sectionId ORDER BY s.sessionDate DESC, s.startTime DESC")
+    List<AttendanceSession> findBySectionIdOrderByDateDesc(@Param("sectionId") Long sectionId);
 }

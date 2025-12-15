@@ -1,5 +1,8 @@
 package com.smartcampus.academic.service.impl;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smartcampus.academic.dto.ScheduleSlot;
 import com.smartcampus.academic.dto.request.EnrollRequest;
 import com.smartcampus.academic.dto.request.UpdateGradeRequest;
 import com.smartcampus.academic.dto.response.EnrollmentResponse;
@@ -32,6 +35,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final CourseSectionRepository sectionRepository;
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
+    private final CoursePrerequisiteRepository prerequisiteRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -50,6 +55,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             throw new BadRequestException("Bu section'da yer kalmadı");
         }
 
+        checkPrerequisites(student.getId(), section.getCourse().getId());
+
+        checkScheduleConflict(student.getId(), section);
+
         Enrollment enrollment = Enrollment.builder()
                 .student(student)
                 .section(section)
@@ -64,6 +73,87 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         String studentName = getStudentName(student);
         return EnrollmentResponse.from(enrollment, studentName);
+    }
+
+    private void checkPrerequisites(Long studentId, Long courseId) {
+        Set<Long> prerequisiteIds = prerequisiteRepository.findPrerequisiteIdsByCourseId(courseId);
+        if (prerequisiteIds.isEmpty()) {
+            return;
+        }
+
+        Set<Long> completedCourseIds = enrollmentRepository.findCompletedCourseIdsByStudentId(studentId);
+        
+        Set<Long> allRequiredPrerequisites = new HashSet<>();
+        collectAllPrerequisites(courseId, allRequiredPrerequisites, new HashSet<>());
+        
+        List<String> missingPrerequisites = new ArrayList<>();
+        for (Long prereqId : allRequiredPrerequisites) {
+            if (!completedCourseIds.contains(prereqId)) {
+                List<String> codes = prerequisiteRepository.findPrerequisiteCodesByCourseId(courseId);
+                missingPrerequisites.addAll(codes.stream()
+                        .filter(code -> !completedCourseIds.contains(prereqId))
+                        .toList());
+            }
+        }
+
+        if (!missingPrerequisites.isEmpty()) {
+            throw new BadRequestException("Önkoşul dersleri tamamlanmamış: " + String.join(", ", missingPrerequisites));
+        }
+    }
+
+    private void collectAllPrerequisites(Long courseId, Set<Long> allPrereqs, Set<Long> visited) {
+        if (visited.contains(courseId)) {
+            return;
+        }
+        visited.add(courseId);
+
+        Set<Long> directPrereqs = prerequisiteRepository.findPrerequisiteIdsByCourseId(courseId);
+        for (Long prereqId : directPrereqs) {
+            allPrereqs.add(prereqId);
+            collectAllPrerequisites(prereqId, allPrereqs, visited);
+        }
+    }
+
+    private void checkScheduleConflict(Long studentId, CourseSection newSection) {
+        if (newSection.getScheduleJson() == null || newSection.getScheduleJson().isEmpty()) {
+            return;
+        }
+
+        List<CourseSection> enrolledSections = enrollmentRepository.findActiveEnrolledSectionsByStudentId(
+                studentId, newSection.getSemester(), newSection.getYear());
+
+        List<ScheduleSlot> newSlots = parseScheduleJson(newSection.getScheduleJson());
+        if (newSlots.isEmpty()) {
+            return;
+        }
+
+        for (CourseSection existingSection : enrolledSections) {
+            if (existingSection.getScheduleJson() == null) {
+                continue;
+            }
+            List<ScheduleSlot> existingSlots = parseScheduleJson(existingSection.getScheduleJson());
+            
+            for (ScheduleSlot newSlot : newSlots) {
+                for (ScheduleSlot existingSlot : existingSlots) {
+                    if (newSlot.overlapsWith(existingSlot)) {
+                        throw new ConflictException(String.format(
+                                "Ders çakışması: %s ile %s dersleri %s günü çakışıyor",
+                                newSection.getCourse().getCode(),
+                                existingSection.getCourse().getCode(),
+                                newSlot.getDay()));
+                    }
+                }
+            }
+        }
+    }
+
+    private List<ScheduleSlot> parseScheduleJson(String scheduleJson) {
+        try {
+            return objectMapper.readValue(scheduleJson, new TypeReference<List<ScheduleSlot>>() {});
+        } catch (Exception e) {
+            log.warn("Schedule JSON parse hatası: {}", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     @Override
@@ -127,9 +217,39 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         }
 
         enrollment = enrollmentRepository.save(enrollment);
+        
+        updateStudentGpa(enrollment.getStudent().getId());
+        
         log.info("Not güncellendi: enrollment={}", enrollmentId);
 
         return EnrollmentResponse.from(enrollment, getStudentName(enrollment.getStudent()));
+    }
+
+    private void updateStudentGpa(Long studentId) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Öğrenci", studentId));
+
+        List<Enrollment> enrollments = enrollmentRepository.findByStudentId(studentId);
+        
+        int totalCredits = 0;
+        BigDecimal totalPoints = BigDecimal.ZERO;
+
+        for (Enrollment e : enrollments) {
+            if (e.getGradePoint() != null && e.getStatus() == EnrollmentStatus.COMPLETED) {
+                int credits = e.getSection().getCourse().getCredits();
+                totalCredits += credits;
+                totalPoints = totalPoints.add(e.getGradePoint().multiply(new BigDecimal(credits)));
+            }
+        }
+
+        BigDecimal cgpa = totalCredits > 0 
+                ? totalPoints.divide(new BigDecimal(totalCredits), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        student.setCgpa(cgpa);
+        student.setGpa(cgpa);
+        studentRepository.save(student);
+        log.info("Öğrenci GPA güncellendi: studentId={}, cgpa={}", studentId, cgpa);
     }
 
     @Override
@@ -167,7 +287,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         Map<String, List<Enrollment>> semesterGroups = enrollments.stream()
                 .filter(e -> e.getStatus() == EnrollmentStatus.COMPLETED || e.getLetterGrade() != null)
-                .collect(Collectors.groupingBy(e ->
+                .collect(Collectors.groupingBy(e -> 
                         e.getSection().getSemester() + "-" + e.getSection().getYear()));
 
         List<TranscriptResponse.SemesterRecord> semesters = new ArrayList<>();
@@ -205,7 +325,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 }
             }
 
-            BigDecimal gpa = semesterCredits > 0 ?
+            BigDecimal gpa = semesterCredits > 0 ? 
                     semesterPoints.divide(new BigDecimal(semesterCredits), 2, RoundingMode.HALF_UP) :
                     BigDecimal.ZERO;
 
@@ -218,7 +338,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                     .build());
         }
 
-        BigDecimal cgpa = totalCredits > 0 ?
+        BigDecimal cgpa = totalCredits > 0 ? 
                 totalPoints.divide(new BigDecimal(totalCredits), 2, RoundingMode.HALF_UP) :
                 BigDecimal.ZERO;
 

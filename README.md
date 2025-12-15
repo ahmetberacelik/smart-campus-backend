@@ -1,46 +1,36 @@
-# Smart Campus Backend
+# 🎓 Smart Campus Backend
 
 Akıllı Kampüs Ekosistem Yönetim Platformu - Backend Services
 
-## İçindekiler
+## 📋 İçindekiler
 
-- [Proje Hakkında](#proje-hakkında)
-- [Teknoloji Stack](#teknoloji-stack)
-- [Mimari](#mimari)
-- [Gereksinimler](#gereksinimler)
-- [Kurulum](#kurulum)
-- [Çalıştırma](#çalıştırma)
-- [API Dokümantasyonu](#api-dokümantasyonu)
-- [Proje Yapısı](#proje-yapısı)
-- [Environment Variables](#environment-variables)
+- [Proje Hakkında](#-proje-hakkında)
+- [Teknoloji Stack](#-teknoloji-stack)
+- [Mimari](#-mimari)
+- [Gereksinimler](#-gereksinimler)
+- [Kurulum](#-kurulum)
+- [Çalıştırma](#-çalıştırma)
+- [API Dokümantasyonu](#-api-dokümantasyonu)
+- [Proje Yapısı](#-proje-yapısı)
+- [Environment Variables](#-environment-variables)
 
 ---
 
-## Proje Hakkında
+## 🎯 Proje Hakkında
 
 Smart Campus, bir üniversite kampüsünün günlük operasyonlarını dijitalleştiren kapsamlı bir web uygulamasıdır.
 
-### Part 1 Kapsamı - Authentication & User Management
-- Kullanıcı Kaydı (Öğrenci, Öğretim Üyesi, Admin)
-- JWT Tabanlı Authentication
-- Email Doğrulama
-- Şifre Sıfırlama
-- Profil Yönetimi
-- Profil Fotoğrafı Yükleme
-
-### Part 2 Kapsamı - Academic Management & GPS Attendance
-- Ders Yönetimi (CRUD, önkoşul sistemi)
-- Ders Kayıt Sistemi (kapasite kontrolü, çakışma kontrolü)
-- Not Yönetimi ve Transkript (JSON + PDF)
-- GPS Tabanlı Yoklama Sistemi
-- QR Kod ile Yoklama (backup)
-- GPS Spoofing Tespiti
-- Mazeret Yönetimi
-- Devamsızlık Uyarı Sistemi (Scheduled Job)
+### Part 1 Kapsamı
+- ✅ Kullanıcı Kaydı (Öğrenci, Öğretim Üyesi, Admin)
+- ✅ JWT Tabanlı Authentication
+- ✅ Email Doğrulama
+- ✅ Şifre Sıfırlama
+- ✅ Profil Yönetimi
+- ✅ Profil Fotoğrafı Yükleme
 
 ---
 
-## Teknoloji Stack
+## 🛠 Teknoloji Stack
 
 | Teknoloji | Versiyon | Açıklama |
 |-----------|----------|----------|
@@ -53,11 +43,10 @@ Smart Campus, bir üniversite kampüsünün günlük operasyonlarını dijitalle
 | JWT | - | Token tabanlı auth |
 | Docker | - | Containerization |
 | Maven | - | Build tool |
-| iText7 | 7.2.5 | PDF oluşturma |
 
 ---
 
-## Mimari
+## 🏗 Mimari
 
 ```
                     ┌─────────────────┐
@@ -70,36 +59,22 @@ Smart Campus, bir üniversite kampüsünün günlük operasyonlarını dijitalle
                     │    (Port 8080)  │
                     └────────┬────────┘
                              │
-        ┌────────────────────┼────────────────────┐
-        │                    │                    │
-        ▼                    ▼                    ▼
-┌───────────────┐   ┌───────────────┐   ┌─────────────────┐
-│  Auth Service │   │   Academic    │   │   Attendance    │
-│  (Port 8081)  │   │    Service    │   │     Service     │
-│               │   │  (Port 8082)  │   │   (Port 8083)   │
-└───────┬───────┘   └───────┬───────┘   └────────┬────────┘
-        │                   │                    │
-        └───────────────────┼────────────────────┘
-                            │
-           ┌────────────────┼────────────────┐
-           ▼                ▼                ▼
-    ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-    │    MySQL    │  │  DO Spaces  │  │ SendGrid    │
-    └─────────────┘  └─────────────┘  └─────────────┘
+                             ▼
+                    ┌─────────────────┐
+                    │  Auth Service   │
+                    │   (Port 8081)   │
+                    └────────┬────────┘
+                             │
+           ┌─────────────────┼─────────────────┐
+           ▼                 ▼                 ▼
+    ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+    │    MySQL    │   │  DO Spaces  │   │ Gmail SMTP  │
+    └─────────────┘   └─────────────┘   └─────────────┘
 ```
-
-### Servisler
-
-| Servis | Port | Sorumluluk |
-|--------|------|------------|
-| **api-gateway** | 8080 | Request routing, CORS |
-| **auth-service** | 8081 | Authentication, User Management |
-| **academic-service** | 8082 | Course, Enrollment, Grade Management |
-| **attendance-service** | 8083 | GPS Attendance, QR Code, Excuse |
 
 ---
 
-## Gereksinimler
+## 📌 Gereksinimler
 
 ### Lokal Geliştirme
 - Java 17+
@@ -113,7 +88,7 @@ Smart Campus, bir üniversite kampüsünün günlük operasyonlarını dijitalle
 
 ---
 
-## Kurulum
+## 🚀 Kurulum
 
 ### Production Deployment (138.68.99.35)
 
@@ -134,23 +109,37 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
+**Önemli:** Production'da `.env` dosyasında:
+- `AUTH_SERVICE_HOST=auth-service` (Docker network içinde)
+- `DB_HOST=138.68.99.35` (Mevcut database)
+- `FRONTEND_URL=http://138.68.99.35:3000`
+
 ### Lokal Geliştirme
 
+### 1. Repository'yi Klonla
+
 ```bash
-# 1. Repository'yi klonla
 git clone https://github.com/your-username/smart-campus-backend.git
 cd smart-campus-backend
+```
 
-# 2. Environment dosyası oluştur
+### 2. Environment Dosyası Oluştur
+
+```bash
 cp .env.example .env
+# .env dosyasını düzenle ve gerekli değerleri gir
+# Lokal için: AUTH_SERVICE_HOST=localhost
+```
 
-# 3. Servisleri başlat
+### 3. Servisleri Başlat
+
+```bash
 docker-compose up -d --build
 ```
 
 ---
 
-## Çalıştırma
+## 🏃 Çalıştırma
 
 ### Docker ile (Önerilen)
 
@@ -171,108 +160,164 @@ docker-compose down
 # Parent projeden tüm modülleri derle
 mvn clean install
 
-# Her servisi ayrı terminalde başlat
-cd api-gateway && mvn spring-boot:run
-cd auth-service && mvn spring-boot:run
-cd academic-service && mvn spring-boot:run
-cd attendance-service && mvn spring-boot:run
+# API Gateway'i başlat
+cd api-gateway
+mvn spring-boot:run
+
+# Auth Service'i başlat (yeni terminal)
+cd auth-service
+mvn spring-boot:run
 ```
 
 ---
 
-## API Dokümantasyonu
+## 📚 API Dokümantasyonu
 
 ### Production (138.68.99.35)
 
 | Servis | URL |
 |--------|-----|
 | **API Gateway** | http://138.68.99.35:8080 |
-| **Auth Service Swagger** | http://138.68.99.35:8081/swagger-ui.html |
-| **Academic Service Swagger** | http://138.68.99.35:8082/swagger-ui.html |
-| **Attendance Service Swagger** | http://138.68.99.35:8083/swagger-ui.html |
+| **Auth Service** | http://138.68.99.35:8081 |
+| **Swagger UI** | http://138.68.99.35:8081/swagger-ui.html |
+
+### Lokal Geliştirme
+
+| Servis | URL |
+|--------|-----|
+| **API Gateway** | http://localhost:8080 |
+| **Auth Service** | http://localhost:8081 |
+| **Swagger UI** | http://localhost:8081/swagger-ui.html |
 
 ### Temel Endpoints
 
-**Authentication (auth-service)**
+**Not:** Tüm endpoint'ler **8080 portu** üzerinden API Gateway üzerinden erişilebilir.
+
 | Method | Endpoint | Açıklama |
 |--------|----------|----------|
 | POST | `/api/v1/auth/register` | Kullanıcı kaydı |
 | POST | `/api/v1/auth/login` | Giriş |
 | POST | `/api/v1/auth/refresh` | Token yenileme |
+| POST | `/api/v1/auth/logout` | Çıkış |
 | GET | `/api/v1/users/me` | Profil görüntüleme |
+| PUT | `/api/v1/users/me` | Profil güncelleme |
 
-**Academic (academic-service)**
-| Method | Endpoint | Açıklama |
-|--------|----------|----------|
-| GET | `/api/v1/courses` | Ders listesi |
-| POST | `/api/v1/enrollments` | Derse kayıt |
-| GET | `/api/v1/enrollments/my-courses` | Kayıtlı derslerim |
-| GET | `/api/v1/enrollments/transcript` | Transkript JSON |
-| GET | `/api/v1/enrollments/transcript/pdf` | Transkript PDF |
+**Örnek:**
+```bash
+# Production
+curl http://138.68.99.35:8080/api/v1/auth/login
 
-**Attendance (attendance-service)**
-| Method | Endpoint | Açıklama |
-|--------|----------|----------|
-| POST | `/api/v1/attendance/sessions` | Yoklama oturumu aç |
-| POST | `/api/v1/attendance/sessions/{id}/checkin` | GPS ile yoklama ver |
-| GET | `/api/v1/attendance/my-attendance` | Yoklama durumum |
+# Lokal
+curl http://localhost:8080/api/v1/auth/login
+```
 
 ---
 
-## Proje Yapısı
+## 📁 Proje Yapısı
 
 ```
 smart-campus-backend/
 ├── api-gateway/                 # API Gateway servisi
+│   ├── src/
+│   │   └── main/
+│   │       ├── java/
+│   │       └── resources/
+│   ├── Dockerfile
+│   └── pom.xml
+│
 ├── auth-service/                # Authentication servisi
-├── academic-service/            # Akademik yönetim servisi
-│   └── src/main/java/com/smartcampus/academic/
-│       ├── controller/          # REST controllers
-│       ├── service/             # Business logic
-│       ├── entity/              # JPA entities
-│       └── repository/          # JPA repositories
-├── attendance-service/          # Yoklama servisi
-│   └── src/main/java/com/smartcampus/attendance/
-│       ├── controller/          # REST controllers
-│       ├── service/             # Business logic
-│       ├── scheduler/           # Scheduled jobs
-│       └── util/                # HaversineCalculator, etc.
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/com/smartcampus/auth/
+│   │   │   │   ├── config/
+│   │   │   │   ├── controller/
+│   │   │   │   ├── dto/
+│   │   │   │   ├── entity/
+│   │   │   │   ├── exception/
+│   │   │   │   ├── repository/
+│   │   │   │   ├── security/
+│   │   │   │   ├── service/
+│   │   │   │   └── util/
+│   │   │   └── resources/
+│   │   └── test/
+│   ├── Dockerfile
+│   └── pom.xml
+│
 ├── docs/                        # Dokümantasyon
 ├── docker-compose.yml           # Docker Compose yapılandırması
-└── pom.xml                      # Parent POM
+├── pom.xml                      # Parent POM
+├── .env.example                 # Örnek environment dosyası
+├── .gitignore
+└── README.md
 ```
 
 ---
 
-## Environment Variables
+## 🔐 Environment Variables
 
-| Değişken | Açıklama |
-|----------|----------|
-| `DB_HOST` | MySQL host |
-| `DB_PORT` | MySQL port |
-| `DB_NAME` | Database adı |
-| `JWT_SECRET` | JWT secret key |
-| `SENDGRID_API_KEY` | SendGrid API key |
-| `DO_SPACES_KEY` | DigitalOcean Spaces key |
-| `FRONTEND_URL` | Frontend URL |
+| Değişken | Açıklama | Production | Lokal |
+|----------|----------|------------|-------|
+| `DB_HOST` | MySQL host | `138.68.99.35` | `localhost` |
+| `DB_PORT` | MySQL port | `3306` | `3306` |
+| `DB_NAME` | Database adı | `smart_campus` | `smart_campus` |
+| `AUTH_SERVICE_HOST` | Auth service host | `auth-service` | `localhost` |
+| `AUTH_SERVICE_PORT` | Auth service port | `8081` | `8081` |
+| `FRONTEND_URL` | Frontend URL | `http://138.68.99.35:3000` | `http://localhost:3000` |
+| `CORS_ALLOWED_ORIGINS` | CORS origins | `http://138.68.99.35:3000` | `http://localhost:3000` |
+| `JWT_SECRET` | JWT secret key | Güçlü key! | Güçlü key! |
 
 **Tüm değişkenler için `.env.example` dosyasına bakın.**
 
+**Önemli Notlar:**
+- Production'da `AUTH_SERVICE_HOST=auth-service` olmalı (Docker network)
+- Lokal'de `AUTH_SERVICE_HOST=localhost` kullanılabilir
+- `JWT_SECRET` production'da mutlaka güçlü olmalı (min 32 karakter)
+
 ---
 
-## İlişkili Repository'ler
+## 🚀 Deployment
+
+**Production Deployment (138.68.99.35):**
+
+Detaylı deployment dokümantasyonu:
+- [DEPLOYMENT.md](docs/DEPLOYMENT.md) - Detaylı deployment rehberi
+- [DEPLOYMENT_QUICK_START.md](docs/DEPLOYMENT_QUICK_START.md) - Hızlı başlangıç
+
+**Hızlı Komutlar:**
+```bash
+# Deployment script'i çalıştır
+./deploy.sh
+
+# Manuel deployment
+docker-compose build
+docker-compose up -d
+
+# Logları görüntüle
+docker-compose logs -f
+```
+
+**Production URL'leri:**
+- API Gateway: `http://138.68.99.35:8080`
+- Auth Service: `http://138.68.99.35:8081`
+- Swagger UI: `http://138.68.99.35:8081/swagger-ui.html`
+
+---
+
+## 🔗 İlişkili Repository'ler
 
 | Repository | Açıklama |
 |------------|----------|
-| [smart-campus-database](https://github.com/your-username/smart-campus-database) | Veritabanı şeması |
+| [smart-campus-database](https://github.com/your-username/smart-campus-database) | Veritabanı şeması ve Docker setup |
 | [smart-campus-frontend](https://github.com/your-username/smart-campus-frontend) | React frontend |
 
 ---
 
-## Lisans
+## 📄 Lisans
 
 Bu proje **Recep Tayyip Erdoğan Üniversitesi Web ve Mobil Programlama Dersi** kapsamında eğitim amaçlı geliştirilmiştir.
 
 ---
 
-**Smart Campus Backend** - Part 1 & Part 2 Tamamlandı
+<p align="center">
+  <b>Smart Campus Backend</b> • Part 1 - Kimlik Doğrulama & Kullanıcı Yönetimi
+</p>

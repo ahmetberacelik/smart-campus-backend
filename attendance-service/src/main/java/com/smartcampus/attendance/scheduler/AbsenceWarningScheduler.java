@@ -1,10 +1,14 @@
 package com.smartcampus.attendance.scheduler;
 
+import com.smartcampus.attendance.dto.response.CourseSectionInfo;
 import com.smartcampus.attendance.entity.AttendanceRecord;
 import com.smartcampus.attendance.entity.AttendanceSession;
 import com.smartcampus.attendance.entity.AttendanceStatus;
 import com.smartcampus.attendance.repository.AttendanceRecordRepository;
 import com.smartcampus.attendance.repository.AttendanceSessionRepository;
+import com.smartcampus.attendance.repository.CourseSectionInfoRepository;
+import com.smartcampus.attendance.repository.StudentInfoRepository;
+import com.smartcampus.attendance.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,6 +25,9 @@ public class AbsenceWarningScheduler {
 
     private final AttendanceSessionRepository sessionRepository;
     private final AttendanceRecordRepository recordRepository;
+    private final CourseSectionInfoRepository courseSectionInfoRepository;
+    private final StudentInfoRepository studentInfoRepository;
+    private final NotificationService notificationService;
 
     private static final int WARNING_THRESHOLD_PERCENT = 30;
     private static final int CRITICAL_THRESHOLD_PERCENT = 50;
@@ -34,6 +41,9 @@ public class AbsenceWarningScheduler {
         Map<Long, List<AttendanceSession>> sessionsBySectionId = allSessions.stream()
                 .collect(Collectors.groupingBy(AttendanceSession::getSectionId));
         
+        List<Long> allSectionIds = new ArrayList<>(sessionsBySectionId.keySet());
+        Map<Long, CourseSectionInfo> sectionInfoMap = courseSectionInfoRepository.findBySectionIds(allSectionIds);
+        
         int warningCount = 0;
         int criticalCount = 0;
         
@@ -43,21 +53,45 @@ public class AbsenceWarningScheduler {
             
             if (sectionSessions.isEmpty()) continue;
             
+            CourseSectionInfo sectionInfo = sectionInfoMap.get(sectionId);
+            
             int totalSessions = sectionSessions.size();
             List<Long> sessionIds = sectionSessions.stream()
                     .map(AttendanceSession::getId)
                     .collect(Collectors.toList());
             
             List<Long> studentIds = recordRepository.findDistinctStudentIdsBySectionId(sectionId);
+            Map<Long, StudentInfoRepository.StudentInfo> studentInfoMap = studentInfoRepository.findByStudentIds(studentIds);
             
             for (Long studentId : studentIds) {
                 AbsenceStats stats = calculateAbsenceStats(studentId, sessionIds, totalSessions);
+                StudentInfoRepository.StudentInfo studentInfo = studentInfoMap.get(studentId);
                 
                 if (stats.absencePercent >= CRITICAL_THRESHOLD_PERCENT) {
                     logCriticalWarning(studentId, sectionId, stats);
+                    if (studentInfo != null && sectionInfo != null) {
+                        notificationService.sendCriticalAbsenceEmail(
+                                studentInfo.getEmail(),
+                                studentInfo.getFullName(),
+                                sectionInfo.getCourseCode(),
+                                sectionInfo.getCourseName(),
+                                stats.absentCount,
+                                stats.totalSessions,
+                                stats.absencePercent);
+                    }
                     criticalCount++;
                 } else if (stats.absencePercent >= WARNING_THRESHOLD_PERCENT) {
                     logWarning(studentId, sectionId, stats);
+                    if (studentInfo != null && sectionInfo != null) {
+                        notificationService.sendAbsenceWarningEmail(
+                                studentInfo.getEmail(),
+                                studentInfo.getFullName(),
+                                sectionInfo.getCourseCode(),
+                                sectionInfo.getCourseName(),
+                                stats.absentCount,
+                                stats.totalSessions,
+                                stats.absencePercent);
+                    }
                     warningCount++;
                 }
             }

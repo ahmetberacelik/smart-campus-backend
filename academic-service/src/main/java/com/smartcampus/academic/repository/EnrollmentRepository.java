@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
@@ -62,4 +63,16 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     List<Enrollment> findByInstructorUserIdAndSemesterAndYear(@Param("instructorUserId") Long instructorUserId,
                                                                @Param("semester") Semester semester,
                                                                @Param("year") Integer year);
+
+    @Query("SELECT e.section.course.id FROM Enrollment e " +
+            "WHERE e.student.id = :studentId AND e.status = 'COMPLETED' AND e.gradePoint > 0")
+    Set<Long> findCompletedCourseIdsByStudentId(@Param("studentId") Long studentId);
+
+    @Query("SELECT e.section FROM Enrollment e " +
+            "WHERE e.student.id = :studentId AND e.status = 'ENROLLED' " +
+            "AND e.section.semester = :semester AND e.section.year = :year")
+    List<com.smartcampus.academic.entity.CourseSection> findActiveEnrolledSectionsByStudentId(
+            @Param("studentId") Long studentId,
+            @Param("semester") String semester,
+            @Param("year") Integer year);
 }
