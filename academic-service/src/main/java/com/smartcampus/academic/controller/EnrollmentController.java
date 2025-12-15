@@ -10,11 +10,14 @@ import com.smartcampus.academic.entity.Semester;
 import com.smartcampus.academic.security.CurrentUser;
 import com.smartcampus.academic.security.CustomUserDetails;
 import com.smartcampus.academic.service.EnrollmentService;
+import com.smartcampus.academic.service.TranscriptPdfService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +30,7 @@ import java.util.List;
 public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;
+    private final TranscriptPdfService transcriptPdfService;
 
     @PostMapping
     @PreAuthorize("hasRole('STUDENT')")
@@ -108,6 +112,32 @@ public class EnrollmentController {
     public ResponseEntity<ApiResponse<TranscriptResponse>> getStudentTranscript(@PathVariable Long userId) {
         TranscriptResponse transcript = enrollmentService.getStudentTranscript(userId);
         return ResponseEntity.ok(ApiResponse.success(transcript));
+    }
+
+    @GetMapping("/transcript/pdf")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<byte[]> getMyTranscriptPdf(@CurrentUser CustomUserDetails userDetails) {
+        TranscriptResponse transcript = enrollmentService.getStudentTranscript(userDetails.getId());
+        byte[] pdfBytes = transcriptPdfService.generateTranscriptPdf(transcript);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "transkript_" + transcript.getStudentNumber() + ".pdf");
+
+        return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+    }
+
+    @GetMapping("/transcript/{userId}/pdf")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FACULTY')")
+    public ResponseEntity<byte[]> getStudentTranscriptPdf(@PathVariable Long userId) {
+        TranscriptResponse transcript = enrollmentService.getStudentTranscript(userId);
+        byte[] pdfBytes = transcriptPdfService.generateTranscriptPdf(transcript);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "transkript_" + transcript.getStudentNumber() + ".pdf");
+
+        return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
     }
 
     @GetMapping("/check/{sectionId}")
