@@ -26,8 +26,8 @@ services:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 30s
+      retries: 5
+      start_period: 60s
     networks:
       - smart_campus_network
     restart: unless-stopped
@@ -62,8 +62,8 @@ services:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/actuator/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 120s
     networks:
       - smart_campus_network
     restart: unless-stopped
@@ -88,8 +88,8 @@ services:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 120s
     networks:
       - smart_campus_network
     restart: unless-stopped
@@ -119,8 +119,8 @@ services:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8083/actuator/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 120s
     networks:
       - smart_campus_network
     restart: unless-stopped
