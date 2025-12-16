@@ -14,6 +14,9 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class UpdateGradeRequest {
 
+    @NotNull(message = "Enrollment ID zorunludur")
+    private Long enrollmentId;
+
     @DecimalMin(value = "0.0", message = "Vize notu 0'dan küçük olamaz")
     @DecimalMax(value = "100.0", message = "Vize notu 100'den büyük olamaz")
     private BigDecimal midtermGrade;
