@@ -17,6 +17,9 @@ public class QrCodeGenerator {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public String generateQrCode(Long sessionId) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException("Session ID null olamaz");
+        }
         try {
             Map<String, Object> payload = Map.of(
                     "sessionId", sessionId,

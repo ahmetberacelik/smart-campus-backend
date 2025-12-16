@@ -89,14 +89,12 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .status(SessionStatus.ACTIVE)
                 .build();
 
-        String qrCode = qrCodeGenerator.generateQrCode(session.getId());
-        session.setQrCode(qrCode);
-        session.setQrCodeGeneratedAt(LocalDateTime.now());
-
+        // Önce session'ı kaydet ki ID oluşsun
         session = sessionRepository.save(session);
 
-        String finalQrCode = qrCodeGenerator.generateQrCode(session.getId());
-        session.setQrCode(finalQrCode);
+        // Şimdi ID mevcut, QR kodu oluştur
+        String qrCode = qrCodeGenerator.generateQrCode(session.getId());
+        session.setQrCode(qrCode);
         session.setQrCodeGeneratedAt(LocalDateTime.now());
         session = sessionRepository.save(session);
 
@@ -366,7 +364,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             List<ExcuseRequest> excuses = excuseRequestRepository.findByStudentId(studentId);
             Map<Long, ExcuseRequest> excuseMap = new HashMap<>();
             for (ExcuseRequest e : excuses) {
-                excuseMap.put(e.getAttendanceRecordId(), e);
+                excuseMap.put(e.getSessionId(), e);
             }
 
             int presentCount = 0;
@@ -390,7 +388,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                         excusedCount++;
                     }
 
-                    ExcuseRequest excuse = excuseMap.get(record.getId());
+                    ExcuseRequest excuse = excuseMap.get(session.getId());
                     if (excuse != null) {
                         excuseStatus = excuse.getStatus().name();
                     }

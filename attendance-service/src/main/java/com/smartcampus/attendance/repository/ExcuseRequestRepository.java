@@ -19,19 +19,19 @@ public interface ExcuseRequestRepository extends JpaRepository<ExcuseRequest, Lo
 
     Page<ExcuseRequest> findByStudentId(Long studentId, Pageable pageable);
 
-    Optional<ExcuseRequest> findByAttendanceRecordId(Long attendanceRecordId);
+    Optional<ExcuseRequest> findBySessionId(Long sessionId);
+
+    Optional<ExcuseRequest> findBySessionIdAndStudentId(Long sessionId, Long studentId);
 
     List<ExcuseRequest> findByStatus(ExcuseStatus status);
 
-    @Query("SELECT e FROM ExcuseRequest e WHERE e.attendanceRecordId IN " +
-            "(SELECT r.id FROM AttendanceRecord r WHERE r.sessionId IN " +
-            "(SELECT s.id FROM AttendanceSession s WHERE s.instructorId = :instructorId))")
+    @Query("SELECT e FROM ExcuseRequest e WHERE e.sessionId IN " +
+            "(SELECT s.id FROM AttendanceSession s WHERE s.instructorId = :instructorId)")
     Page<ExcuseRequest> findByInstructorId(@Param("instructorId") Long instructorId, Pageable pageable);
 
-    @Query("SELECT e FROM ExcuseRequest e WHERE e.attendanceRecordId IN " +
-            "(SELECT r.id FROM AttendanceRecord r WHERE r.sessionId IN " +
+    @Query("SELECT e FROM ExcuseRequest e WHERE e.sessionId IN " +
             "(SELECT s.id FROM AttendanceSession s WHERE s.instructorId = :instructorId " +
-            "AND (:sectionId IS NULL OR s.sectionId = :sectionId))) " +
+            "AND (:sectionId IS NULL OR s.sectionId = :sectionId)) " +
             "AND (:status IS NULL OR e.status = :status)")
     Page<ExcuseRequest> findByInstructorIdWithFilters(
             @Param("instructorId") Long instructorId,
@@ -44,10 +44,9 @@ public interface ExcuseRequestRepository extends JpaRepository<ExcuseRequest, Lo
             @Param("studentId") Long studentId,
             @Param("status") ExcuseStatus status);
 
-    @Query("SELECT e FROM ExcuseRequest e WHERE e.attendanceRecordId IN " +
-            "(SELECT r.id FROM AttendanceRecord r WHERE r.sessionId IN " +
-            "(SELECT s.id FROM AttendanceSession s WHERE s.sectionId = :sectionId))")
+    @Query("SELECT e FROM ExcuseRequest e WHERE e.sessionId IN " +
+            "(SELECT s.id FROM AttendanceSession s WHERE s.sectionId = :sectionId)")
     List<ExcuseRequest> findBySectionId(@Param("sectionId") Long sectionId);
 
-    boolean existsByAttendanceRecordIdAndStudentId(Long attendanceRecordId, Long studentId);
+    boolean existsBySessionIdAndStudentId(Long sessionId, Long studentId);
 }
