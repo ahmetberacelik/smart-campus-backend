@@ -75,14 +75,44 @@ public class ExcuseRequestServiceImpl implements ExcuseRequestService {
     @Override
     public PageResponse<ExcuseRequestResponse> getExcuseRequestsForFaculty(Long instructorId, Long sectionId,
                                                                             ExcuseStatus status, Pageable pageable) {
-        Page<ExcuseRequest> requests = excuseRequestRepository.findByInstructorIdWithFilters(
-                instructorId, sectionId, status, pageable);
+        try {
+            Page<ExcuseRequest> requests = excuseRequestRepository.findByInstructorIdWithFilters(
+                    instructorId, sectionId, status, pageable);
 
-        List<ExcuseRequestResponse> content = requests.getContent().stream()
-                .map(this::mapToResponse)
-                .toList();
+            List<ExcuseRequestResponse> content = requests.getContent().stream()
+                    .map(excuseRequest -> {
+                        try {
+                            // AttendanceRecord'u bul
+                            AttendanceRecord record = attendanceRecordRepository
+                                    .findById(excuseRequest.getAttendanceRecordId())
+                                    .orElse(null);
+                            
+                            if (record != null) {
+                                // Session'ı bul
+                                AttendanceSession session = sessionRepository
+                                        .findById(record.getSessionId())
+                                        .orElse(null);
+                                
+                                if (session != null) {
+                                    return mapToResponse(excuseRequest, session);
+                                }
+                            }
+                            
+                            // Session bulunamazsa basit response döndür
+                            return mapToResponse(excuseRequest);
+                        } catch (Exception e) {
+                            log.error("Mazeret response oluşturulurken hata: excuseId={}, error={}", 
+                                    excuseRequest.getId(), e.getMessage());
+                            return mapToResponse(excuseRequest);
+                        }
+                    })
+                    .toList();
 
-        return PageResponse.from(requests, content);
+            return PageResponse.from(requests, content);
+        } catch (Exception e) {
+            log.error("Mazeret istekleri getirilirken hata: instructorId={}, error={}", instructorId, e.getMessage(), e);
+            throw new RuntimeException("Mazeret istekleri yüklenirken bir hata oluştu", e);
+        }
     }
 
     @Override

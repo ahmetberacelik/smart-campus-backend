@@ -50,19 +50,40 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Value("${attendance.qr-code-refresh-interval:5}")
     private int qrCodeRefreshInterval;
 
+    // Varsayılan kampüs koordinatları (İstanbul)
+    @Value("${attendance.default-latitude:41.0082}")
+    private double defaultLatitude;
+
+    @Value("${attendance.default-longitude:28.9784}")
+    private double defaultLongitude;
+
     @Override
     @Transactional
     public SessionResponse createSession(Long instructorId, CreateSessionRequest request) {
+        // GPS koordinatları null ise varsayılan değerleri kullan
+        Double latitude = request.getLatitude() != null ? request.getLatitude() : defaultLatitude;
+        Double longitude = request.getLongitude() != null ? request.getLongitude() : defaultLongitude;
+
+        // Tarih ve saat - frontend'den gelirse kullan, yoksa şimdiki zamanı al
+        LocalDate sessionDate = request.getSessionDate() != null ? request.getSessionDate() : LocalDate.now();
+        LocalTime startTime = request.getStartTime() != null 
+                ? request.getStartTime().toLocalTime() 
+                : LocalTime.now();
+        LocalTime endTime = null;
+        if (request.getEndTime() != null) {
+            endTime = request.getEndTime().toLocalTime();
+        } else if (request.getDurationMinutes() != null) {
+            endTime = startTime.plusMinutes(request.getDurationMinutes());
+        }
+
         AttendanceSession session = AttendanceSession.builder()
                 .sectionId(request.getSectionId())
                 .instructorId(instructorId)
-                .sessionDate(LocalDate.now())
-                .startTime(LocalTime.now())
-                .endTime(request.getDurationMinutes() != null
-                        ? LocalTime.now().plusMinutes(request.getDurationMinutes())
-                        : null)
-                .latitude(request.getLatitude())
-                .longitude(request.getLongitude())
+                .sessionDate(sessionDate)
+                .startTime(startTime)
+                .endTime(endTime)
+                .latitude(latitude)
+                .longitude(longitude)
                 .geofenceRadius(request.getGeofenceRadius() != null
                         ? request.getGeofenceRadius() : defaultGeofenceRadius)
                 .status(SessionStatus.ACTIVE)

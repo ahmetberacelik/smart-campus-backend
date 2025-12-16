@@ -7,6 +7,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -22,9 +25,12 @@ public class CreateSessionRequest {
     @Positive(message = "Süre pozitif olmalıdır")
     private Integer durationMinutes;
 
-    @NotNull(message = "Enlem zorunludur")
+    // GPS koordinatları - Opsiyonel (sınıf konumundan veya varsayılandan alınır)
     private Double latitude;
-
-    @NotNull(message = "Boylam zorunludur")
     private Double longitude;
+
+    // Frontend'den gelen tarih/saat bilgileri - Opsiyonel
+    private LocalDate sessionDate;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
 }

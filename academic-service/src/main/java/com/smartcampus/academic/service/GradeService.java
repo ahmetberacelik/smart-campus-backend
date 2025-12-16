@@ -43,3 +43,4 @@ public interface GradeService {
     List<EnrollmentResponse> enterGradesBatch(Long facultyUserId, List<UpdateGradeRequest> requests);
 }
 
+
