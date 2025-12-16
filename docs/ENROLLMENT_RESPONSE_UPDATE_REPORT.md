@@ -1,3 +1,31 @@
+# 🔧 EnrollmentResponse Backend Düzeltme Raporu
+
+## Sorun Özeti
+
+**Tarih:** 16 Aralık 2025  
+**Öncelik:** YÜKSEK  
+**Etkilenen Sayfa:** Kayıtlı Derslerim (Frontend)  
+**Belirti:** Dönem, öğretim üyesi ve kapasite bilgileri gösterilmiyor (sadece "-" görünüyor)
+
+---
+
+## Teknik Analiz
+
+Frontend "Kayıtlı Derslerim" sayfasında `enrollment.semester`, `enrollment.year`, `enrollment.instructorName` gibi alanlara erişmeye çalışıyor ama backend bunları göndermiyor.
+
+---
+
+## Düzeltilecek Dosya
+
+**Dosya:** `academic-service/src/main/java/com/smartcampus/academic/dto/response/EnrollmentResponse.java`
+
+---
+
+## TAM GÜNCEL KOD (Kopyala-Yapıştır Hazır)
+
+Mevcut `EnrollmentResponse.java` dosyasının **tamamını** aşağıdaki kod ile değiştirin:
+
+```java
 package com.smartcampus.academic.dto.response;
 
 import com.smartcampus.academic.entity.Enrollment;
@@ -84,3 +112,62 @@ public class EnrollmentResponse {
                 .build();
     }
 }
+```
+
+---
+
+## Değişiklik Özeti
+
+| Alan | Tip | Açıklama |
+|------|-----|----------|
+| `semester` | String | "FALL", "SPRING", "SUMMER" |
+| `year` | Integer | 2025 |
+| `instructorName` | String | "Dr. Ahmet Yılmaz" |
+| `capacity` | Integer | Section kapasitesi (30) |
+| `enrolledCount` | Integer | Kayıtlı öğrenci sayısı (25) |
+| `credits` | Integer | Ders kredisi (4) |
+
+---
+
+## Deployment Sonrası
+
+Backend yeniden deploy edildikten sonra:
+1. Frontend otomatik olarak bu alanları gösterecek
+2. "Dönem: FALL 2025" şeklinde görünecek
+3. Öğretim üyesi adı görünecek
+4. Kapasite bilgisi görünecek
+
+---
+
+## Test
+
+Değişiklik sonrası bu endpoint'i test edin:
+
+```bash
+GET /api/v1/enrollments/my-enrollments
+Authorization: Bearer <student_token>
+```
+
+**Beklenen Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "courseCode": "CENG101",
+      "courseName": "Programlamaya Giriş",
+      "sectionNumber": "01",
+      "semester": "FALL",
+      "year": 2025,
+      "instructorName": "Dr. Ahmet Yılmaz",
+      "capacity": 30,
+      "enrolledCount": 25,
+      "credits": 4,
+      "status": "ENROLLED",
+      "enrollmentDate": "2025-12-16T..."
+    }
+  ]
+}
+```
+

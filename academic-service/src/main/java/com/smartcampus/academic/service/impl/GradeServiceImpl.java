@@ -26,7 +26,6 @@ public class GradeServiceImpl implements GradeService {
     private final EnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
     private final FacultyRepository facultyRepository;
-    private final UserRepository userRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -48,9 +47,6 @@ public class GradeServiceImpl implements GradeService {
     public TranscriptResponse getTranscript(Long studentUserId) {
         Student student = studentRepository.findByUserId(studentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Öğrenci bulunamadı"));
-
-        User user = userRepository.findById(studentUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı", studentUserId));
 
         List<Enrollment> enrollments = enrollmentRepository.findByStudentId(student.getId());
 
@@ -115,7 +111,7 @@ public class GradeServiceImpl implements GradeService {
         return TranscriptResponse.builder()
                 .studentId(student.getId())
                 .studentNumber(student.getStudentNumber())
-                .studentName(user.getFullName())
+                .studentName(student.getUser().getFullName())
                 .departmentName(student.getDepartment().getName())
                 .cgpa(cgpa)
                 .totalCredits(totalCredits)
@@ -207,9 +203,10 @@ public class GradeServiceImpl implements GradeService {
     }
 
     private String getStudentName(Student student) {
-        return userRepository.findById(student.getUserId())
-                .map(User::getFullName)
-                .orElse("Bilinmeyen Öğrenci");
+        if (student.getUser() != null) {
+            return student.getUser().getFullName();
+        }
+        return "Bilinmeyen Öğrenci";
     }
 
     private String calculateLetterGrade(BigDecimal totalGrade) {
@@ -239,3 +236,4 @@ public class GradeServiceImpl implements GradeService {
         };
     }
 }
+
