@@ -128,7 +128,12 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // Token'lar oluştur (doğrulama bekliyor durumunda da login yapabilsin)
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getEmail());
+        // Yeni format: userId, email, role bilgisi ile token oluştur
+        String accessToken = jwtTokenProvider.generateAccessToken(
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name()
+        );
         String refreshToken = createRefreshToken(user);
 
         log.info("User registered: {}", user.getEmail());
@@ -159,8 +164,12 @@ public class AuthServiceImpl implements AuthService {
             throw new UnauthorizedException("Hesabınız devre dışı bırakılmış", "ACCOUNT_DISABLED");
         }
 
-        // Token'lar oluştur
-        String accessToken = jwtTokenProvider.generateAccessToken(authentication);
+        // Token'lar oluştur - userId, email, role bilgisi ile
+        String accessToken = jwtTokenProvider.generateAccessToken(
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name()
+        );
         String refreshToken = createRefreshToken(user);
 
         log.info("User logged in: {}", user.getEmail());
@@ -189,8 +198,12 @@ public class AuthServiceImpl implements AuthService {
         // Eski token'ı sil
         refreshTokenRepository.delete(refreshToken);
 
-        // Yeni token'lar oluştur
-        String newAccessToken = jwtTokenProvider.generateAccessToken(user.getEmail());
+        // Yeni token'lar oluştur - userId, email, role bilgisi ile
+        String newAccessToken = jwtTokenProvider.generateAccessToken(
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name()
+        );
         String newRefreshToken = createRefreshToken(user);
 
         log.info("Token refreshed for user: {}", user.getEmail());

@@ -1,5 +1,6 @@
 package com.smartcampus.auth.security;
 
+import com.smartcampus.auth.entity.Role;
 import com.smartcampus.auth.entity.User;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
@@ -15,6 +16,7 @@ public class CustomUserDetails implements UserDetails {
     private final Long id;
     private final String email;
     private final String password;
+    private final Role role;
     private final Collection<? extends GrantedAuthority> authorities;
     private final boolean isActive;
     private final boolean isVerified;
@@ -23,6 +25,7 @@ public class CustomUserDetails implements UserDetails {
         this.id = user.getId();
         this.email = user.getEmail();
         this.password = user.getPasswordHash();
+        this.role = user.getRole();
         this.authorities = Collections.singletonList(
                 new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
         );

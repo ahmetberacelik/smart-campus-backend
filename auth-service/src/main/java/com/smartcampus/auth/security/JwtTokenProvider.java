@@ -33,19 +33,52 @@ public class JwtTokenProvider {
 
     public String generateAccessToken(Authentication authentication) {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        return generateAccessToken(userDetails.getUsername());
+        if (userDetails instanceof CustomUserDetails customUserDetails) {
+            return generateAccessToken(
+                    customUserDetails.getId(),
+                    customUserDetails.getUsername(),
+                    customUserDetails.getRole().name()
+            );
+        }
+        // Fallback - sadece email ile (geriye dönük uyumluluk)
+        return generateAccessToken(null, userDetails.getUsername(), null);
     }
 
-    public String generateAccessToken(String email) {
+    /**
+     * Tam bilgi ile JWT Access Token oluşturur.
+     * Token payload'ı: { sub: "userId", email: "...", role: "STUDENT|FACULTY|ADMIN", iat: ..., exp: ... }
+     */
+    public String generateAccessToken(Long userId, String email, String role) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + accessTokenExpiration);
 
-        return Jwts.builder()
-                .subject(email)
+        var builder = Jwts.builder()
                 .issuedAt(now)
                 .expiration(expiryDate)
-                .signWith(getSigningKey())
-                .compact();
+                .signWith(getSigningKey());
+
+        // userId varsa subject olarak kullan, yoksa email
+        if (userId != null) {
+            builder.subject(String.valueOf(userId));
+            builder.claim("email", email);
+        } else {
+            builder.subject(email);
+        }
+
+        // Role varsa ekle
+        if (role != null) {
+            builder.claim("role", role);
+        }
+
+        return builder.compact();
+    }
+
+    /**
+     * @deprecated Yeni generateAccessToken(Long userId, String email, String role) metodunu kullanın
+     */
+    @Deprecated
+    public String generateAccessToken(String email) {
+        return generateAccessToken(null, email, null);
     }
 
     public String generateRefreshToken(String email) {
