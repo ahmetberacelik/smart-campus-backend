@@ -4,6 +4,7 @@ import com.smartcampus.attendance.dto.request.CheckInQrRequest;
 import com.smartcampus.attendance.dto.request.CheckInRequest;
 import com.smartcampus.attendance.dto.request.CreateSessionRequest;
 import com.smartcampus.attendance.dto.response.*;
+import com.smartcampus.attendance.dto.response.CourseSectionInfo;
 import com.smartcampus.attendance.entity.*;
 import com.smartcampus.attendance.exception.BadRequestException;
 import com.smartcampus.attendance.exception.ForbiddenException;
@@ -22,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +41,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final AttendanceRecordRepository recordRepository;
     private final ExcuseRequestRepository excuseRequestRepository;
     private final CourseSectionInfoRepository courseSectionInfoRepository;
+    private final JdbcTemplate jdbcTemplate;
     private final GpsUtils gpsUtils;
     private final QrCodeGenerator qrCodeGenerator;
     private final SpoofingDetector spoofingDetector;
@@ -474,10 +477,16 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     private SessionResponse mapToSessionResponse(AttendanceSession session) {
         Long presentCount = recordRepository.countBySessionIdAndStatus(session.getId(), AttendanceStatus.PRESENT);
+        
+        // Ders bilgilerini al
+        CourseSectionInfo sectionInfo = courseSectionInfoRepository.findBySectionId(session.getSectionId());
 
         return SessionResponse.builder()
                 .id(session.getId())
                 .sectionId(session.getSectionId())
+                .courseCode(sectionInfo != null ? sectionInfo.getCourseCode() : null)
+                .courseName(sectionInfo != null ? sectionInfo.getCourseName() : null)
+                .sectionNumber(sectionInfo != null ? sectionInfo.getSectionNumber() : null)
                 .date(session.getSessionDate())
                 .startTime(session.getStartTime())
                 .endTime(session.getEndTime())
@@ -495,5 +504,26 @@ public class AttendanceServiceImpl implements AttendanceService {
         if (percentage >= 80) return "OK";
         if (percentage >= 70) return "WARNING";
         return "CRITICAL";
+    }
+    
+    @Override
+    public List<SessionResponse> getActiveSessionsForStudent(Long studentId) {
+        // Öğrencinin kayıtlı olduğu section ID'lerini al
+        String sql = "SELECT e.section_id FROM enrollments e WHERE e.student_id = ? AND e.status = 'ENROLLED'";
+        List<Long> enrolledSectionIds = jdbcTemplate.queryForList(sql, Long.class, studentId);
+        
+        if (enrolledSectionIds.isEmpty()) {
+            return List.of();
+        }
+        
+        // Bu section'lardaki aktif oturumları bul
+        List<AttendanceSession> activeSessions = sessionRepository.findActiveSessions(
+            enrolledSectionIds, SessionStatus.ACTIVE);
+        
+        // Öğrencinin zaten yoklama verdiği oturumları filtrele
+        return activeSessions.stream()
+            .filter(session -> recordRepository.findBySessionIdAndStudentId(session.getId(), studentId).isEmpty())
+            .map(this::mapToSessionResponse)
+            .toList();
     }
 }

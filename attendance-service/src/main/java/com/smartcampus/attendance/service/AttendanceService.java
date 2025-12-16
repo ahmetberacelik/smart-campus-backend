@@ -30,4 +30,9 @@ public interface AttendanceService {
     List<MyAttendanceResponse> getMyAttendance(Long studentId, String semester, Integer year);
 
     SessionResponse refreshQrCode(Long instructorId, Long sessionId);
+    
+    /**
+     * Öğrencinin kayıtlı olduğu derslerdeki aktif yoklama oturumlarını getirir
+     */
+    List<SessionResponse> getActiveSessionsForStudent(Long studentId);
 }
