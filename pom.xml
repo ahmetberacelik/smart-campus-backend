@@ -17,6 +17,7 @@
         <module>auth-service</module>
         <module>academic-service</module>
         <module>attendance-service</module>
+        <module>meal-service</module>
     </modules>
 
     <parent>
