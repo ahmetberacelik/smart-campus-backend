@@ -12,13 +12,13 @@ COPY meal-service/pom.xml ./meal-service/pom.xml
 COPY event-service/pom.xml ./event-service/pom.xml
 
 # Create empty source directories for other modules to satisfy Maven
-RUN mkdir -p api-gateway/src/main/java auth-service/src/main/java academic-service/src/main/java meal-service/src/main/java event-service/src/main/java
+RUN mkdir -p api-gateway/src/main/java auth-service/src/main/java academic-service/src/main/java attendance-service/src/main/java meal-service/src/main/java
 
-# Copy attendance-service source code
-COPY attendance-service/src ./attendance-service/src
+# Copy event-service source code
+COPY event-service/src ./event-service/src
 
 # Build the application
-RUN mvn clean package -pl attendance-service -am -DskipTests
+RUN mvn clean package -pl event-service -am -DskipTests
 
 # Runtime stage
 FROM eclipse-temurin:17-jre-alpine
@@ -29,10 +29,10 @@ RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 
 # Copy jar from build stage
-COPY --from=build /app/attendance-service/target/*.jar app.jar
+COPY --from=build /app/event-service/target/*.jar app.jar
 
 # Expose port
-EXPOSE 8083
+EXPOSE 8085
 
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
