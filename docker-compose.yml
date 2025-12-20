@@ -114,6 +114,7 @@ services:
       - DO_SPACES_ENDPOINT=${DO_SPACES_ENDPOINT}
       - DO_SPACES_BUCKET=${DO_SPACES_BUCKET}
       - DO_SPACES_REGION=${DO_SPACES_REGION}
+      - FRONTEND_URL=${FRONTEND_URL}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8083/actuator/health"]
