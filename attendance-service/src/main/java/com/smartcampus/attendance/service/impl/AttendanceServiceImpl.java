@@ -90,14 +90,12 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .status(SessionStatus.ACTIVE)
                 .build();
 
-        String qrCode = qrCodeGenerator.generateQrCode(session.getId());
-        session.setQrCode(qrCode);
-        session.setQrCodeGeneratedAt(LocalDateTime.now());
-
+        // Önce session'ı kaydet ki ID oluşsun
         session = sessionRepository.save(session);
 
-        String finalQrCode = qrCodeGenerator.generateQrCode(session.getId());
-        session.setQrCode(finalQrCode);
+        // Artık session.getId() != null, QR kodu oluşturabiliriz
+        String qrCode = qrCodeGenerator.generateQrCode(session.getId());
+        session.setQrCode(qrCode);
         session.setQrCodeGeneratedAt(LocalDateTime.now());
         session = sessionRepository.save(session);
 
