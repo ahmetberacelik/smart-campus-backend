@@ -19,9 +19,10 @@ public interface AttendanceService {
     SessionResponse closeSession(Long instructorId, Long sessionId);
 
     PageResponse<SessionResponse> getMySessions(Long instructorId, Long sectionId, SessionStatus status,
-                                                  LocalDate startDate, LocalDate endDate, Pageable pageable);
+            LocalDate startDate, LocalDate endDate, Pageable pageable);
 
-    AttendanceReportResponse getAttendanceReport(Long instructorId, Long sectionId, LocalDate startDate, LocalDate endDate);
+    AttendanceReportResponse getAttendanceReport(Long instructorId, Long sectionId, LocalDate startDate,
+            LocalDate endDate);
 
     CheckInResponse checkIn(Long studentId, Long sessionId, CheckInRequest request, String ipAddress);
 
@@ -30,9 +31,9 @@ public interface AttendanceService {
     List<MyAttendanceResponse> getMyAttendance(Long studentId, String semester, Integer year);
 
     SessionResponse refreshQrCode(Long instructorId, Long sessionId);
-    
+
     /**
-     * Öğrencinin kayıtlı olduğu derslerdeki aktif yoklama oturumlarını getirir
+     * Öğrencinin kayıtlı olduğu derslerin aktif yoklama oturumlarını döner
      */
     List<SessionResponse> getActiveSessionsForStudent(Long studentId);
 }

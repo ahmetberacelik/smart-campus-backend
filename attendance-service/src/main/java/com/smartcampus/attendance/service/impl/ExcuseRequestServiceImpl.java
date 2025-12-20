@@ -40,8 +40,17 @@ public class ExcuseRequestServiceImpl implements ExcuseRequestService {
         AttendanceSession session = sessionRepository.findById(request.getSessionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Yoklama oturumu", "id", request.getSessionId()));
 
-        // Zaten mazeret başvurusu var mı kontrol et
-        if (excuseRequestRepository.existsBySessionIdAndStudentId(request.getSessionId(), studentId)) {
+        AttendanceRecord record = attendanceRecordRepository.findBySessionIdAndStudentId(request.getSessionId(), studentId)
+                .orElseGet(() -> {
+                    AttendanceRecord newRecord = AttendanceRecord.builder()
+                            .sessionId(request.getSessionId())
+                            .studentId(studentId)
+                            .status(AttendanceStatus.ABSENT)
+                            .build();
+                    return attendanceRecordRepository.save(newRecord);
+                });
+
+        if (excuseRequestRepository.existsByAttendanceRecordIdAndStudentId(record.getId(), studentId)) {
             throw new BadRequestException("Bu yoklama için zaten mazeret başvurusu yapılmış", "EXCUSE_ALREADY_EXISTS");
         }
 
@@ -51,7 +60,7 @@ public class ExcuseRequestServiceImpl implements ExcuseRequestService {
         }
 
         ExcuseRequest excuseRequest = ExcuseRequest.builder()
-                .sessionId(request.getSessionId())
+                .attendanceRecordId(record.getId())
                 .studentId(studentId)
                 .reason(request.getReason())
                 .documentUrl(documentUrl)
@@ -73,13 +82,20 @@ public class ExcuseRequestServiceImpl implements ExcuseRequestService {
             List<ExcuseRequestResponse> content = requests.getContent().stream()
                     .map(excuseRequest -> {
                         try {
-                            // Session'ı bul
-                            AttendanceSession session = sessionRepository
-                                    .findById(excuseRequest.getSessionId())
+                            // AttendanceRecord'u bul
+                            AttendanceRecord record = attendanceRecordRepository
+                                    .findById(excuseRequest.getAttendanceRecordId())
                                     .orElse(null);
                             
-                            if (session != null) {
-                                return mapToResponse(excuseRequest, session);
+                            if (record != null) {
+                                // Session'ı bul
+                                AttendanceSession session = sessionRepository
+                                        .findById(record.getSessionId())
+                                        .orElse(null);
+                                
+                                if (session != null) {
+                                    return mapToResponse(excuseRequest, session);
+                                }
                             }
                             
                             // Session bulunamazsa basit response döndür
@@ -123,14 +139,13 @@ public class ExcuseRequestServiceImpl implements ExcuseRequestService {
         excuseRequest.setReviewedAt(LocalDateTime.now());
         excuseRequest.setReviewerNotes(request.getNotes());
 
+        final Long attendanceRecordId = excuseRequest.getAttendanceRecordId();
         ExcuseRequest savedExcuseRequest = excuseRequestRepository.save(excuseRequest);
 
-        // İlgili attendance record'u EXCUSED olarak işaretle
-        attendanceRecordRepository.findBySessionIdAndStudentId(excuseRequest.getSessionId(), excuseRequest.getStudentId())
-                .ifPresent(record -> {
-                    record.setStatus(AttendanceStatus.EXCUSED);
-                    attendanceRecordRepository.save(record);
-                });
+        AttendanceRecord record = attendanceRecordRepository.findById(attendanceRecordId)
+                .orElseThrow(() -> new ResourceNotFoundException("Yoklama kaydı", "id", attendanceRecordId));
+        record.setStatus(AttendanceStatus.EXCUSED);
+        attendanceRecordRepository.save(record);
 
         return mapToResponse(savedExcuseRequest);
     }
@@ -158,8 +173,11 @@ public class ExcuseRequestServiceImpl implements ExcuseRequestService {
             throw new BadRequestException("Mazeret zaten değerlendirilmiş", "EXCUSE_ALREADY_REVIEWED");
         }
 
-        AttendanceSession session = sessionRepository.findById(excuseRequest.getSessionId())
-                .orElseThrow(() -> new ResourceNotFoundException("Yoklama oturumu", "id", excuseRequest.getSessionId()));
+        AttendanceRecord record = attendanceRecordRepository.findById(excuseRequest.getAttendanceRecordId())
+                .orElseThrow(() -> new ResourceNotFoundException("Yoklama kaydı", "id", excuseRequest.getAttendanceRecordId()));
+
+        AttendanceSession session = sessionRepository.findById(record.getSessionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Yoklama oturumu", "id", record.getSessionId()));
 
         if (!session.getInstructorId().equals(instructorId)) {
             throw new ForbiddenException("Bu mazereti değerlendirme yetkiniz yok");
@@ -170,7 +188,6 @@ public class ExcuseRequestServiceImpl implements ExcuseRequestService {
         return ExcuseRequestResponse.builder()
                 .id(excuseRequest.getId())
                 .studentId(excuseRequest.getStudentId())
-                .sessionId(excuseRequest.getSessionId())
                 .reason(excuseRequest.getReason())
                 .documentUrl(excuseRequest.getDocumentUrl())
                 .status(excuseRequest.getStatus())

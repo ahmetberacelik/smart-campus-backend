@@ -121,11 +121,8 @@ public class AttendanceController {
         List<MyAttendanceResponse> response = attendanceService.getMyAttendance(userDetails.getId(), semester, year);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
-    
-    /**
-     * Öğrencinin kayıtlı olduğu derslerdeki aktif yoklama oturumlarını getirir
-     */
-    @GetMapping("/active-sessions")
+
+    @GetMapping("/sessions/active-for-student")
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<ApiResponse<List<SessionResponse>>> getActiveSessionsForStudent(
             @CurrentUser CustomUserDetails userDetails) {

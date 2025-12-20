@@ -4,7 +4,6 @@ import com.smartcampus.attendance.dto.request.CheckInQrRequest;
 import com.smartcampus.attendance.dto.request.CheckInRequest;
 import com.smartcampus.attendance.dto.request.CreateSessionRequest;
 import com.smartcampus.attendance.dto.response.*;
-import com.smartcampus.attendance.dto.response.CourseSectionInfo;
 import com.smartcampus.attendance.entity.*;
 import com.smartcampus.attendance.exception.BadRequestException;
 import com.smartcampus.attendance.exception.ForbiddenException;
@@ -23,7 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,7 +39,6 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final AttendanceRecordRepository recordRepository;
     private final ExcuseRequestRepository excuseRequestRepository;
     private final CourseSectionInfoRepository courseSectionInfoRepository;
-    private final JdbcTemplate jdbcTemplate;
     private final GpsUtils gpsUtils;
     private final QrCodeGenerator qrCodeGenerator;
     private final SpoofingDetector spoofingDetector;
@@ -69,8 +66,8 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         // Tarih ve saat - frontend'den gelirse kullan, yoksa şimdiki zamanı al
         LocalDate sessionDate = request.getSessionDate() != null ? request.getSessionDate() : LocalDate.now();
-        LocalTime startTime = request.getStartTime() != null 
-                ? request.getStartTime().toLocalTime() 
+        LocalTime startTime = request.getStartTime() != null
+                ? request.getStartTime().toLocalTime()
                 : LocalTime.now();
         LocalTime endTime = null;
         if (request.getEndTime() != null) {
@@ -88,16 +85,19 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .latitude(latitude)
                 .longitude(longitude)
                 .geofenceRadius(request.getGeofenceRadius() != null
-                        ? request.getGeofenceRadius() : defaultGeofenceRadius)
+                        ? request.getGeofenceRadius()
+                        : defaultGeofenceRadius)
                 .status(SessionStatus.ACTIVE)
                 .build();
 
-        // Önce session'ı kaydet ki ID oluşsun
-        session = sessionRepository.save(session);
-
-        // Şimdi ID mevcut, QR kodu oluştur
         String qrCode = qrCodeGenerator.generateQrCode(session.getId());
         session.setQrCode(qrCode);
+        session.setQrCodeGeneratedAt(LocalDateTime.now());
+
+        session = sessionRepository.save(session);
+
+        String finalQrCode = qrCodeGenerator.generateQrCode(session.getId());
+        session.setQrCode(finalQrCode);
         session.setQrCodeGeneratedAt(LocalDateTime.now());
         session = sessionRepository.save(session);
 
@@ -134,7 +134,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     public PageResponse<SessionResponse> getMySessions(Long instructorId, Long sectionId, SessionStatus status,
-                                                        LocalDate startDate, LocalDate endDate, Pageable pageable) {
+            LocalDate startDate, LocalDate endDate, Pageable pageable) {
         Page<AttendanceSession> sessions = sessionRepository.findByInstructorIdWithFilters(
                 instructorId, sectionId, status, startDate, endDate, pageable);
 
@@ -147,7 +147,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     public AttendanceReportResponse getAttendanceReport(Long instructorId, Long sectionId,
-                                                         LocalDate startDate, LocalDate endDate) {
+            LocalDate startDate, LocalDate endDate) {
         List<AttendanceSession> sessions = sessionRepository.findBySectionIdAndDateRange(sectionId, startDate, endDate);
 
         if (sessions.isEmpty()) {
@@ -181,8 +181,8 @@ public class AttendanceServiceImpl implements AttendanceService {
                     .filter(r -> r.getStatus() == AttendanceStatus.EXCUSED).count();
             int absentCount = sessions.size() - presentCount - excusedCount;
 
-            double percentage = sessions.isEmpty() ? 0 :
-                    ((double) (presentCount + excusedCount) / sessions.size()) * 100;
+            double percentage = sessions.isEmpty() ? 0
+                    : ((double) (presentCount + excusedCount) / sessions.size()) * 100;
 
             boolean isFlagged = records.stream().anyMatch(r -> Boolean.TRUE.equals(r.getIsFlagged()));
             String flagReason = records.stream()
@@ -338,7 +338,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         }
 
         Map<Long, CourseSectionInfo> sectionInfoMap = courseSectionInfoRepository.findBySectionIds(sectionIds);
-        
+
         if (semester != null && year != null) {
             sectionIds = sectionIds.stream()
                     .filter(id -> {
@@ -352,10 +352,12 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         for (Long sectionId : sectionIds) {
             CourseSectionInfo sectionInfo = sectionInfoMap.get(sectionId);
-            if (sectionInfo == null) continue;
+            if (sectionInfo == null)
+                continue;
 
             List<AttendanceSession> sessions = sessionRepository.findBySectionIdOrderByDateDesc(sectionId);
-            if (sessions.isEmpty()) continue;
+            if (sessions.isEmpty())
+                continue;
 
             List<Long> sessionIds = sessions.stream().map(AttendanceSession::getId).toList();
             List<AttendanceRecord> records = recordRepository.findBySessionIdsAndStudentId(sessionIds, studentId);
@@ -367,7 +369,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             List<ExcuseRequest> excuses = excuseRequestRepository.findByStudentId(studentId);
             Map<Long, ExcuseRequest> excuseMap = new HashMap<>();
             for (ExcuseRequest e : excuses) {
-                excuseMap.put(e.getSessionId(), e);
+                excuseMap.put(e.getAttendanceRecordId(), e);
             }
 
             int presentCount = 0;
@@ -384,14 +386,14 @@ public class AttendanceServiceImpl implements AttendanceService {
                 if (record != null) {
                     status = record.getStatus().name();
                     checkInTime = record.getCheckInTime() != null ? record.getCheckInTime().toLocalTime() : null;
-                    
+
                     if (record.getStatus() == AttendanceStatus.PRESENT) {
                         presentCount++;
                     } else if (record.getStatus() == AttendanceStatus.EXCUSED) {
                         excusedCount++;
                     }
 
-                    ExcuseRequest excuse = excuseMap.get(session.getId());
+                    ExcuseRequest excuse = excuseMap.get(record.getId());
                     if (excuse != null) {
                         excuseStatus = excuse.getStatus().name();
                     }
@@ -411,8 +413,8 @@ public class AttendanceServiceImpl implements AttendanceService {
             }
 
             int totalSessions = sessions.size();
-            double percentage = totalSessions > 0 
-                    ? ((double) (presentCount + excusedCount) / totalSessions) * 100 
+            double percentage = totalSessions > 0
+                    ? ((double) (presentCount + excusedCount) / totalSessions) * 100
                     : 0;
 
             responses.add(MyAttendanceResponse.builder()
@@ -454,12 +456,81 @@ public class AttendanceServiceImpl implements AttendanceService {
         return mapToSessionResponse(session);
     }
 
+    @Override
+    public List<SessionResponse> getActiveSessionsForStudent(Long studentId) {
+        // Öğrencinin yoklama verdiği section'ları bul
+        List<Long> enrolledSectionIds = sessionRepository.findDistinctSectionIdsByStudentId(studentId);
+
+        // Eğer öğrenci hiç yoklama vermemişse, boş liste dön
+        // Not: İdeal olarak öğrencinin kayıtlı olduğu section'ları enrollment
+        // tablosundan çekmeliyiz
+        // Ama bu bilgi academic-service'de, şimdilik yoklama verdiği section'ları
+        // kullanacağız
+        if (enrolledSectionIds.isEmpty()) {
+            // Tüm aktif oturumları dön (öğrenci henüz hiç yoklama vermemiş olabilir)
+            List<AttendanceSession> allActiveSessions = sessionRepository.findAll().stream()
+                    .filter(s -> s.getStatus() == SessionStatus.ACTIVE)
+                    .toList();
+
+            return allActiveSessions.stream()
+                    .map(this::mapToSessionResponseWithCourseInfo)
+                    .toList();
+        }
+
+        // Aktif oturumları bul
+        List<AttendanceSession> activeSessions = sessionRepository.findActiveSessions(
+                enrolledSectionIds, SessionStatus.ACTIVE);
+
+        // Öğrencinin zaten yoklama verdiği oturumları filtrele
+        List<SessionResponse> result = new ArrayList<>();
+        for (AttendanceSession session : activeSessions) {
+            // Öğrenci bu oturuma yoklama vermiş mi kontrol et
+            boolean alreadyCheckedIn = recordRepository.findBySessionIdAndStudentId(
+                    session.getId(), studentId).isPresent();
+
+            if (!alreadyCheckedIn) {
+                SessionResponse response = mapToSessionResponseWithCourseInfo(session);
+                result.add(response);
+            }
+        }
+
+        return result;
+    }
+
+    private SessionResponse mapToSessionResponseWithCourseInfo(AttendanceSession session) {
+        SessionResponse response = mapToSessionResponse(session);
+
+        // Section bilgilerini ekle
+        CourseSectionInfo sectionInfo = courseSectionInfoRepository.findBySectionId(session.getSectionId());
+        if (sectionInfo != null) {
+            return SessionResponse.builder()
+                    .id(response.getId())
+                    .sectionId(response.getSectionId())
+                    .date(response.getDate())
+                    .startTime(response.getStartTime())
+                    .endTime(response.getEndTime())
+                    .latitude(response.getLatitude())
+                    .longitude(response.getLongitude())
+                    .geofenceRadius(response.getGeofenceRadius())
+                    .qrCode(response.getQrCode())
+                    .qrCodeUrl(response.getQrCodeUrl())
+                    .status(response.getStatus())
+                    .presentCount(response.getPresentCount())
+                    .courseCode(sectionInfo.getCourseCode())
+                    .courseName(sectionInfo.getCourseName())
+                    .sectionNumber(sectionInfo.getSectionNumber())
+                    .build();
+        }
+
+        return response;
+    }
+
     private void validateCampusNetwork(String ipAddress) {
         if (!ipValidator.isOnCampusNetwork(ipAddress)) {
             throw new ForbiddenException("Yoklama vermek için kampüs ağına bağlı olmalısınız",
                     "NOT_ON_CAMPUS_NETWORK",
                     Map.of("ipAddress", ipAddress != null ? ipAddress : "unknown",
-                           "message", "Lütfen kampüs WiFi ağına bağlanın ve tekrar deneyin"));
+                            "message", "Lütfen kampüs WiFi ağına bağlanın ve tekrar deneyin"));
         }
     }
 
@@ -477,16 +548,10 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     private SessionResponse mapToSessionResponse(AttendanceSession session) {
         Long presentCount = recordRepository.countBySessionIdAndStatus(session.getId(), AttendanceStatus.PRESENT);
-        
-        // Ders bilgilerini al
-        CourseSectionInfo sectionInfo = courseSectionInfoRepository.findBySectionId(session.getSectionId());
 
         return SessionResponse.builder()
                 .id(session.getId())
                 .sectionId(session.getSectionId())
-                .courseCode(sectionInfo != null ? sectionInfo.getCourseCode() : null)
-                .courseName(sectionInfo != null ? sectionInfo.getCourseName() : null)
-                .sectionNumber(sectionInfo != null ? sectionInfo.getSectionNumber() : null)
                 .date(session.getSessionDate())
                 .startTime(session.getStartTime())
                 .endTime(session.getEndTime())
@@ -501,29 +566,10 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     private String getAttendanceStatusString(double percentage) {
-        if (percentage >= 80) return "OK";
-        if (percentage >= 70) return "WARNING";
+        if (percentage >= 80)
+            return "OK";
+        if (percentage >= 70)
+            return "WARNING";
         return "CRITICAL";
-    }
-    
-    @Override
-    public List<SessionResponse> getActiveSessionsForStudent(Long studentId) {
-        // Öğrencinin kayıtlı olduğu section ID'lerini al
-        String sql = "SELECT e.section_id FROM enrollments e WHERE e.student_id = ? AND e.status = 'ENROLLED'";
-        List<Long> enrolledSectionIds = jdbcTemplate.queryForList(sql, Long.class, studentId);
-        
-        if (enrolledSectionIds.isEmpty()) {
-            return List.of();
-        }
-        
-        // Bu section'lardaki aktif oturumları bul
-        List<AttendanceSession> activeSessions = sessionRepository.findActiveSessions(
-            enrolledSectionIds, SessionStatus.ACTIVE);
-        
-        // Öğrencinin zaten yoklama verdiği oturumları filtrele
-        return activeSessions.stream()
-            .filter(session -> recordRepository.findBySessionIdAndStudentId(session.getId(), studentId).isEmpty())
-            .map(this::mapToSessionResponse)
-            .toList();
     }
 }

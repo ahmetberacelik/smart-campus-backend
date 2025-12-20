@@ -18,8 +18,8 @@ public class ExcuseRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "session_id", nullable = false)
-    private Long sessionId;
+    @Column(name = "attendance_record_id", nullable = false)
+    private Long attendanceRecordId;
 
     @Column(name = "student_id", nullable = false)
     private Long studentId;
