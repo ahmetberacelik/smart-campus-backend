@@ -106,7 +106,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     public SessionResponse getSession(Long sessionId) {
         AttendanceSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Yoklama oturumu", "id", sessionId));
-        return mapToSessionResponse(session);
+        return mapToSessionResponseWithCourseInfo(session);
     }
 
     @Override
