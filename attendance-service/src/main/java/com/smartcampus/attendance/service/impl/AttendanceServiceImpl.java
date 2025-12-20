@@ -369,7 +369,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             List<ExcuseRequest> excuses = excuseRequestRepository.findByStudentId(studentId);
             Map<Long, ExcuseRequest> excuseMap = new HashMap<>();
             for (ExcuseRequest e : excuses) {
-                excuseMap.put(e.getAttendanceRecordId(), e);
+                excuseMap.put(e.getSessionId(), e);
             }
 
             int presentCount = 0;

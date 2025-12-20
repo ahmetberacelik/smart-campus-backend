@@ -42,8 +42,12 @@ public class QrCodeGenerator {
      */
     public String generateQrCode(Long sessionId) {
         String token = generateQrToken(sessionId);
+        // frontendUrl null olursa varsayılan kullan
+        String baseUrl = (frontendUrl != null && !frontendUrl.isBlank())
+                ? frontendUrl
+                : "http://localhost:3000";
         // URL formatı: http://IP:3000/attendance/give/18?qr=BASE64_TOKEN
-        return frontendUrl + "/attendance/give/" + sessionId + "?qr="
+        return baseUrl + "/attendance/give/" + sessionId + "?qr="
                 + URLEncoder.encode(token, StandardCharsets.UTF_8);
     }
 
