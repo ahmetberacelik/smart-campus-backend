@@ -215,7 +215,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Yoklama oturumu", "id", sessionId));
 
         validateSession(session);
-        validateCampusNetwork(ipAddress);
+        // validateCampusNetwork(ipAddress); // Kampüs ağı kontrolü devre dışı bırakıldı
         checkAlreadyCheckedIn(sessionId, studentId);
 
         double distance = gpsUtils.calculateDistance(
@@ -276,7 +276,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Yoklama oturumu", "id", sessionId));
 
         validateSession(session);
-        validateCampusNetwork(ipAddress);
+        // validateCampusNetwork(ipAddress); // Kampüs ağı kontrolü devre dışı bırakıldı
         checkAlreadyCheckedIn(sessionId, studentId);
 
         try {
