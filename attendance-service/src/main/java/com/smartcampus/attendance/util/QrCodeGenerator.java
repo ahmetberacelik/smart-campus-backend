@@ -25,10 +25,15 @@ public class QrCodeGenerator {
      */
     public String generateQrToken(Long sessionId) {
         try {
-            Map<String, Object> payload = Map.of(
-                    "sessionId", sessionId,
-                    "token", UUID.randomUUID().toString(),
-                    "timestamp", LocalDateTime.now().toString());
+            if (sessionId == null) {
+                throw new IllegalArgumentException("Session ID null olamaz");
+            }
+
+            java.util.HashMap<String, Object> payload = new java.util.HashMap<>();
+            payload.put("sessionId", sessionId);
+            payload.put("token", UUID.randomUUID().toString());
+            payload.put("timestamp", LocalDateTime.now().toString());
+
             String json = objectMapper.writeValueAsString(payload);
             return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
         } catch (JsonProcessingException e) {
