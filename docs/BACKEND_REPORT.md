@@ -808,6 +808,34 @@ WARNING_ABSENCE_RATE=20        # %
 CRITICAL_ABSENCE_RATE=30       # %
 ```
 
+### 14.4 Meal Service
+
+```properties
+# Database
+DB_HOST=smart_campus_db
+DB_PORT=3306
+DB_NAME=smart_campus
+DB_USERNAME=root
+DB_PASSWORD=****
+
+# JWT (shared secret)
+JWT_SECRET=****
+```
+
+### 14.5 Event Service
+
+```properties
+# Database
+DB_HOST=smart_campus_db
+DB_PORT=3306
+DB_NAME=smart_campus
+DB_USERNAME=root
+DB_PASSWORD=****
+
+# JWT (shared secret)
+JWT_SECRET=****
+```
+
 ---
 
 ## 15. API Dokümantasyonu
@@ -821,6 +849,8 @@ Swagger UI üzerinden API dokümantasyonuna erişilebilir:
 | Auth Service | http://localhost:8081/swagger-ui.html |
 | Academic Service | http://localhost:8082/swagger-ui.html |
 | Attendance Service | http://localhost:8083/swagger-ui.html |
+| Meal Service | http://localhost:8084/swagger-ui.html |
+| Event Service | http://localhost:8085/swagger-ui.html |
 | API Docs (JSON) | http://localhost:808X/api-docs |
 
 ### 15.2 Dokümantasyon Özellikleri
@@ -834,9 +864,73 @@ Swagger UI üzerinden API dokümantasyonuna erişilebilir:
 
 ---
 
-## 16. Tamamlanan Özellikler
+## 16. Part 3 - API Endpoints
 
-### 16.1 Part 1 - Authentication & User Management
+### 16.1 Meal Service Endpoints (Port: 8084)
+
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/api/v1/meals/cafeterias` | Yemekhane listesi |
+| GET | `/api/v1/meals/cafeterias/{id}` | Yemekhane detayı |
+| GET | `/api/v1/meals/menus` | Günlük menü |
+| GET | `/api/v1/meals/menus/weekly` | Haftalık menü |
+| GET | `/api/v1/meals/wallet` | Cüzdan bakiyesi |
+| POST | `/api/v1/meals/wallet/topup` | Bakiye yükleme |
+| GET | `/api/v1/meals/wallet/transactions` | İşlem geçmişi |
+| POST | `/api/v1/meals/reservations` | Yemek rezervasyonu |
+| GET | `/api/v1/meals/reservations/my` | Rezervasyonlarım |
+| DELETE | `/api/v1/meals/reservations/{id}` | Rezervasyon iptal |
+| POST | `/api/v1/meals/reservations/{qr}/use` | QR ile kullanım |
+
+### 16.2 Event Service Endpoints (Port: 8085)
+
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/api/v1/events` | Etkinlik listesi |
+| GET | `/api/v1/events/{id}` | Etkinlik detayı |
+| POST | `/api/v1/events` | Etkinlik oluştur (Admin) |
+| PUT | `/api/v1/events/{id}` | Etkinlik güncelle |
+| POST | `/api/v1/events/{id}/publish` | Etkinlik yayınla |
+| POST | `/api/v1/events/{id}/cancel` | Etkinlik iptal et |
+| GET | `/api/v1/events/category/{category}` | Kategoriye göre |
+| POST | `/api/v1/events/registrations` | Etkinliğe kayıt |
+| DELETE | `/api/v1/events/registrations/{id}` | Kayıt iptal |
+| GET | `/api/v1/events/registrations/my` | Kayıtlarım |
+| POST | `/api/v1/events/registrations/{qr}/checkin` | QR check-in |
+| GET | `/api/v1/events/{id}/registrations` | Kayıtlı kullanıcılar |
+
+### 16.3 Scheduling Endpoints (Academic Service - Port: 8082)
+
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/api/v1/schedules` | Tüm programlar |
+| GET | `/api/v1/schedules/{id}` | Program detayı |
+| GET | `/api/v1/schedules/section/{sectionId}` | Bölüme göre |
+| GET | `/api/v1/schedules/classroom/{classroomId}` | Dersliğe göre |
+| GET | `/api/v1/schedules/day/{dayOfWeek}` | Güne göre |
+| POST | `/api/v1/schedules` | Program oluştur (Admin) |
+| PUT | `/api/v1/schedules/{id}` | Program güncelle (Admin) |
+| DELETE | `/api/v1/schedules/{id}` | Program sil (Admin) |
+| POST | `/api/v1/schedules/check-conflict` | Çakışma kontrolü |
+
+### 16.4 Classroom Reservation Endpoints (Academic Service)
+
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| POST | `/api/v1/classroom-reservations` | Rezervasyon oluştur |
+| GET | `/api/v1/classroom-reservations/{id}` | Rezervasyon detayı |
+| GET | `/api/v1/classroom-reservations/my` | Rezervasyonlarım |
+| GET | `/api/v1/classroom-reservations/classroom/{id}` | Derslik rezervasyonları |
+| GET | `/api/v1/classroom-reservations/pending` | Bekleyenler (Admin) |
+| POST | `/api/v1/classroom-reservations/{id}/approve` | Onayla (Admin) |
+| POST | `/api/v1/classroom-reservations/{id}/reject` | Reddet (Admin) |
+| DELETE | `/api/v1/classroom-reservations/{id}` | İptal et |
+
+---
+
+## 17. Tamamlanan Özellikler
+
+### 17.1 Part 1 - Authentication & User Management ✅
 
 - ✅ Kullanıcı kaydı (Öğrenci, Öğretim Üyesi)
 - ✅ Email doğrulama sistemi
@@ -849,61 +943,78 @@ Swagger UI üzerinden API dokümantasyonuna erişilebilir:
 - ✅ Admin kullanıcı listesi
 - ✅ Role-based access control (RBAC)
 
-### 16.2 Part 2 - Academic Management
+### 17.2 Part 2 - Academic Management ✅
 
-- ⬜ Ders kataloğu (CRUD)
-- ⬜ Ders bölümleri (Section) yönetimi
-- ⬜ Derse kayıt olma (Enrollment)
-- ⬜ Önkoşul kontrolü (Recursive prerequisite checking)
-- ⬜ Çakışma kontrolü (Schedule conflict detection)
-- ⬜ Kapasite kontrolü (Atomic increment)
-- ⬜ Dersi bırakma (Drop period kontrolü)
-- ⬜ Not görüntüleme (Öğrenci)
-- ⬜ Not girişi (Öğretim üyesi)
-- ⬜ Transkript görüntüleme (JSON)
-- ⬜ Transkript PDF indirme
-- ⬜ GPA/CGPA hesaplama
+- ✅ Ders kataloğu (CRUD)
+- ✅ Ders bölümleri (Section) yönetimi
+- ✅ Derse kayıt olma (Enrollment)
+- ✅ Önkoşul kontrolü (Recursive prerequisite checking)
+- ✅ Çakışma kontrolü (Schedule conflict detection)
+- ✅ Kapasite kontrolü (Atomic increment)
+- ✅ Dersi bırakma (Drop period kontrolü)
+- ✅ Not görüntüleme (Öğrenci)
+- ✅ Not girişi (Öğretim üyesi)
+- ✅ Transkript görüntüleme (JSON)
+- ✅ GPA/CGPA hesaplama
+- ✅ Derslik yönetimi (Classroom)
 
-### 16.3 Part 2 - GPS Attendance
+### 17.3 Part 2 - GPS Attendance ✅
 
-- ⬜ Yoklama oturumu açma (Öğretim üyesi)
-- ⬜ GPS koordinatları ile yoklama
-- ⬜ Haversine mesafe hesaplama
-- ⬜ Geofencing radius kontrolü
-- ⬜ QR kod ile yoklama (backup)
-- ⬜ GPS spoofing tespiti
-- ⬜ Yoklama durumu görüntüleme (Öğrenci)
-- ⬜ Yoklama raporları (Öğretim üyesi)
-- ⬜ Mazeret bildirme ve onaylama
-- ⬜ Devamsızlık uyarıları
+- ✅ Yoklama oturumu açma (Öğretim üyesi)
+- ✅ GPS koordinatları ile yoklama
+- ✅ Haversine mesafe hesaplama
+- ✅ Geofencing radius kontrolü
+- ✅ QR kod ile yoklama (backup)
+- ✅ GPS spoofing tespiti
+- ✅ Yoklama durumu görüntüleme (Öğrenci)
+- ✅ Yoklama raporları (Öğretim üyesi)
+- ✅ Mazeret bildirme ve onaylama
+- ✅ Devamsızlık uyarıları
+
+### 17.4 Part 3 - Meal Service ✅
+
+- ✅ Yemekhane yönetimi (CRUD)
+- ✅ Menü yönetimi (günlük/haftalık)
+- ✅ Cüzdan sistemi (bakiye, yükleme)
+- ✅ İşlem geçmişi
+- ✅ Yemek rezervasyonu
+- ✅ QR kod ile yemek kullanımı
+- ✅ Burs sistemi entegrasyonu
+
+### 17.5 Part 3 - Event Management ✅
+
+- ✅ Etkinlik oluşturma/yönetimi
+- ✅ Etkinlik kategorileri
+- ✅ Etkinlik yayınlama/iptal
+- ✅ Etkinliğe kayıt (FIFO)
+- ✅ Waitlist (bekleme listesi)
+- ✅ QR kod ile check-in
+- ✅ Kapasite kontrolü
+
+### 17.6 Part 3 - Course Scheduling ✅
+
+- ✅ Ders programı yönetimi
+- ✅ Çakışma kontrolü
+- ✅ Derslik rezervasyonu
+- ✅ Rezervasyon onay akışı (PENDING → APPROVED/REJECTED)
+- ✅ Müsaitlik kontrolü
 
 ---
 
-## 17. Sonraki Adımlar
+## 18. Servis Yapısı (Güncel)
 
-### Part 2 Geliştirme Planı (Devam)
-
-1. ⬜ Course, Section, Enrollment entity'leri
-2. ⬜ Attendance, Classroom entity'leri
-3. ⬜ PrerequisiteService implementasyonu
-4. ⬜ ScheduleConflictService implementasyonu
-5. ⬜ AttendanceService implementasyonu
-6. ⬜ HaversineCalculator implementasyonu
-7. ⬜ SpoofingDetectionService implementasyonu
-8. ⬜ QrCodeService implementasyonu
-9. ⬜ PDF generation (Transkript)
-10. ⬜ Unit testler (PrerequisiteService, Haversine)
-11. ⬜ Integration testler (Enrollment, Attendance flows)
-
-### Part 3 Geliştirme Planı
-
-1. ⬜ Meal Reservation System
-2. ⬜ Event Management
-3. ⬜ Course Scheduling (CSP Algorithm)
+| Servis | Port | Sorumluluk |
+|--------|------|------------|
+| **api-gateway** | 8080 | Request routing, load balancing |
+| **auth-service** | 8081 | Authentication, User Management |
+| **academic-service** | 8082 | Course, Enrollment, Grade, Schedule |
+| **attendance-service** | 8083 | GPS Attendance, QR Code, Excuse |
+| **meal-service** | 8084 | Cafeteria, Menu, Wallet, Reservation |
+| **event-service** | 8085 | Event, Registration, Check-in |
 
 ---
 
-## 18. Referanslar
+## 19. Referanslar
 
 | Doküman | Açıklama |
 |---------|----------|
@@ -911,9 +1022,12 @@ Swagger UI üzerinden API dokümantasyonuna erişilebilir:
 | [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) | Veritabanı şeması |
 | [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) | API dokümantasyonu |
 | [DATABASE_DOCKER_SETUP.md](./DATABASE_DOCKER_SETUP.md) | Database Docker kurulumu |
+| [MEAL_SERVICE_API_TEST.md](../meal-service/MEAL_SERVICE_API_TEST.md) | Meal Service test rehberi |
+| [EVENT_SERVICE_API_TEST.md](../event-service/EVENT_SERVICE_API_TEST.md) | Event Service test rehberi |
+| [SCHEDULING_API_TEST.md](../academic-service/SCHEDULING_API_TEST.md) | Scheduling test rehberi |
 
 ---
 
 **Hazırlayan:** Smart Campus Backend Team  
 **Tarih:** Aralık 2025  
-**Versiyon:** 2.0
+**Versiyon:** 3.0

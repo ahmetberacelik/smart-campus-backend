@@ -8,7 +8,7 @@ Bu belge Swagger üzerinden meal-service API'lerini test etmek için örnek iste
 ```bash
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@smartcampus.edu.tr","password":"Admin123!"}'
+  -d '{"email":"admin@smartcampus.edu.tr","password":"password123"}'
 ```
 
 **Swagger'da Authorize:**

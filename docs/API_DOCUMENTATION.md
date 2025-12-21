@@ -2729,15 +2729,85 @@ function detectSpoofing(studentId, latitude, longitude, accuracy):
 
 ---
 
-## 14. Versiyon Geçmişi
+## 14. Part 3 Endpoints (Özet)
+
+### 14.1 Meal Service (Port: 8084)
+
+| Method | Endpoint | Auth | Açıklama |
+|--------|----------|------|----------|
+| GET | `/api/v1/meals/cafeterias` | ❌ | Yemekhane listesi |
+| GET | `/api/v1/meals/cafeterias/{id}` | ❌ | Yemekhane detayı |
+| GET | `/api/v1/meals/menus` | ❌ | Günlük menü |
+| GET | `/api/v1/meals/menus/weekly` | ❌ | Haftalık menü |
+| GET | `/api/v1/meals/wallet` | ✅ | Cüzdan bakiyesi |
+| POST | `/api/v1/meals/wallet/topup` | ✅ | Bakiye yükleme |
+| GET | `/api/v1/meals/wallet/transactions` | ✅ | İşlem geçmişi |
+| POST | `/api/v1/meals/reservations` | ✅ | Yemek rezervasyonu |
+| GET | `/api/v1/meals/reservations/my` | ✅ | Rezervasyonlarım |
+| DELETE | `/api/v1/meals/reservations/{id}` | ✅ | Rezervasyon iptal |
+| POST | `/api/v1/meals/reservations/{qr}/use` | ✅ | QR ile kullanım |
+
+### 14.2 Event Service (Port: 8085)
+
+| Method | Endpoint | Auth | Açıklama |
+|--------|----------|------|----------|
+| GET | `/api/v1/events` | ❌ | Etkinlik listesi |
+| GET | `/api/v1/events/upcoming` | ❌ | Yaklaşan etkinlikler |
+| GET | `/api/v1/events/{id}` | ❌ | Etkinlik detayı |
+| GET | `/api/v1/events/category/{category}` | ❌ | Kategoriye göre |
+| GET | `/api/v1/events/search` | ❌ | Arama |
+| POST | `/api/v1/events` | ✅ Admin | Etkinlik oluştur |
+| PUT | `/api/v1/events/{id}` | ✅ Admin | Etkinlik güncelle |
+| POST | `/api/v1/events/{id}/publish` | ✅ Admin | Yayınla |
+| POST | `/api/v1/events/{id}/cancel` | ✅ Admin | İptal et |
+| GET | `/api/v1/events/organizer/my` | ✅ | Benim etkinliklerim |
+| POST | `/api/v1/registrations` | ✅ | Kayıt ol |
+| DELETE | `/api/v1/registrations/{id}` | ✅ | Kayıt iptal |
+| GET | `/api/v1/registrations/my` | ✅ | Kayıtlarım |
+| POST | `/api/v1/registrations/{qr}/checkin` | ✅ Admin | QR check-in |
+| GET | `/api/v1/registrations/event/{id}` | ✅ | Kayıtlı kullanıcılar |
+| GET | `/api/v1/registrations/event/{id}/stats` | ✅ | İstatistikler |
+
+### 14.3 Scheduling (Academic Service - Port: 8082)
+
+| Method | Endpoint | Auth | Açıklama |
+|--------|----------|------|----------|
+| GET | `/api/v1/schedules` | ❌ | Tüm programlar |
+| GET | `/api/v1/schedules/{id}` | ❌ | Program detayı |
+| GET | `/api/v1/schedules/section/{sectionId}` | ❌ | Bölüme göre |
+| GET | `/api/v1/schedules/classroom/{classroomId}` | ❌ | Dersliğe göre |
+| GET | `/api/v1/schedules/day/{dayOfWeek}` | ❌ | Güne göre |
+| POST | `/api/v1/schedules` | ✅ Admin | Program oluştur |
+| PUT | `/api/v1/schedules/{id}` | ✅ Admin | Program güncelle |
+| DELETE | `/api/v1/schedules/{id}` | ✅ Admin | Program sil |
+| POST | `/api/v1/schedules/check-conflict` | ✅ | Çakışma kontrolü |
+
+### 14.4 Classroom Reservations (Academic Service)
+
+| Method | Endpoint | Auth | Açıklama |
+|--------|----------|------|----------|
+| POST | `/api/v1/classroom-reservations` | ✅ | Rezervasyon oluştur |
+| GET | `/api/v1/classroom-reservations/{id}` | ✅ | Rezervasyon detayı |
+| GET | `/api/v1/classroom-reservations/my` | ✅ | Rezervasyonlarım |
+| GET | `/api/v1/classroom-reservations/classroom/{id}` | ✅ | Derslik rezervasyonları |
+| GET | `/api/v1/classroom-reservations/available` | ✅ | Müsaitlik kontrolü |
+| GET | `/api/v1/classroom-reservations/pending` | ✅ Admin | Bekleyenler |
+| POST | `/api/v1/classroom-reservations/{id}/approve` | ✅ Admin | Onayla |
+| POST | `/api/v1/classroom-reservations/{id}/reject` | ✅ Admin | Reddet |
+| DELETE | `/api/v1/classroom-reservations/{id}` | ✅ | İptal et |
+
+---
+
+## 15. Versiyon Geçmişi
 
 | Versiyon | Tarih | Değişiklikler |
 |----------|-------|---------------|
 | 1.0 | 2025-12-09 | İlk versiyon - Part 1 endpoint'leri |
 | 2.0 | 2025-12-15 | Part 2 - Academic Management & GPS Attendance endpoint'leri eklendi |
+| 3.0 | 2025-12-21 | Part 3 - Meal Service, Event Service, Scheduling endpoint'leri eklendi |
 
 ---
 
 **Hazırlayan:** Smart Campus Backend Team  
-**Son Güncelleme:** 15 Aralık 2025  
+**Son Güncelleme:** 21 Aralık 2025  
 **API Versiyonu:** v1

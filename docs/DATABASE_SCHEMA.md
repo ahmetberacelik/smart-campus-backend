@@ -665,6 +665,142 @@ CREATE TABLE excuse_requests (
 
 ---
 
+## 5. Part 3 Tabloları (Meal Service, Event Management, Scheduling)
+
+### 5.1. cafeterias (Yemekhaneler)
+
+| Sütun Adı | Veri Tipi | Kısıtlamalar | Açıklama |
+|-----------|-----------|--------------|----------|
+| id | BIGINT | PK, Auto Increment | Yemekhane ID |
+| name | VARCHAR(100) | NOT NULL | Yemekhane adı |
+| location | VARCHAR(200) | NULL | Konum açıklaması |
+| capacity | INT | NOT NULL, DEFAULT 200 | Kapasite |
+| latitude | DECIMAL(10, 8) | NULL | GPS enlem |
+| longitude | DECIMAL(11, 8) | NULL | GPS boylam |
+| opening_time | TIME | DEFAULT '07:00:00' | Açılış saati |
+| closing_time | TIME | DEFAULT '21:00:00' | Kapanış saati |
+| is_active | TINYINT(1) | DEFAULT 1 | Aktif mi? |
+
+### 5.2. meal_menus (Yemek Menüleri)
+
+| Sütun Adı | Veri Tipi | Kısıtlamalar | Açıklama |
+|-----------|-----------|--------------|----------|
+| id | BIGINT | PK, Auto Increment | Menü ID |
+| cafeteria_id | BIGINT | FK, NOT NULL | Yemekhane referansı |
+| menu_date | DATE | NOT NULL | Menü tarihi |
+| meal_type | ENUM | NOT NULL | 'BREAKFAST', 'LUNCH', 'DINNER' |
+| items_json | JSON | NOT NULL | Yemek öğeleri |
+| nutrition_json | JSON | NULL | Besin değerleri |
+| price | DECIMAL(10, 2) | NOT NULL, DEFAULT 0.00 | Ücret (TL) |
+| is_vegan | TINYINT(1) | DEFAULT 0 | Vegan menü mü? |
+| is_vegetarian | TINYINT(1) | DEFAULT 0 | Vejetaryen menü mü? |
+| is_published | TINYINT(1) | DEFAULT 0 | Yayında mı? |
+
+### 5.3. wallets (Cüzdanlar)
+
+| Sütun Adı | Veri Tipi | Kısıtlamalar | Açıklama |
+|-----------|-----------|--------------|----------|
+| id | BIGINT | PK, Auto Increment | Cüzdan ID |
+| user_id | BIGINT | FK, UNIQUE, NOT NULL | Kullanıcı referansı |
+| balance | DECIMAL(10, 2) | NOT NULL, DEFAULT 0.00 | Bakiye |
+| currency | VARCHAR(3) | DEFAULT 'TRY' | Para birimi |
+| is_scholarship | TINYINT(1) | DEFAULT 0 | Burslu mu? |
+| daily_scholarship_limit | INT | DEFAULT 2 | Günlük burs limiti |
+| scholarship_used_today | INT | DEFAULT 0 | Bugün kullanılan |
+| is_active | TINYINT(1) | DEFAULT 1 | Aktif mi? |
+
+### 5.4. transactions (İşlemler)
+
+| Sütun Adı | Veri Tipi | Kısıtlamalar | Açıklama |
+|-----------|-----------|--------------|----------|
+| id | BIGINT | PK, Auto Increment | İşlem ID |
+| wallet_id | BIGINT | FK, NOT NULL | Cüzdan referansı |
+| type | ENUM | NOT NULL | 'CREDIT', 'DEBIT' |
+| amount | DECIMAL(10, 2) | NOT NULL | Tutar |
+| balance_after | DECIMAL(10, 2) | NOT NULL | İşlem sonrası bakiye |
+| reference_type | ENUM | NOT NULL | 'TOPUP', 'MEAL', 'EVENT', 'REFUND' |
+| reference_id | BIGINT | NULL | Referans ID |
+| description | VARCHAR(255) | NULL | Açıklama |
+| status | ENUM | DEFAULT 'COMPLETED' | 'PENDING', 'COMPLETED', 'FAILED', 'CANCELLED' |
+
+### 5.5. meal_reservations (Yemek Rezervasyonları)
+
+| Sütun Adı | Veri Tipi | Kısıtlamalar | Açıklama |
+|-----------|-----------|--------------|----------|
+| id | BIGINT | PK, Auto Increment | Rezervasyon ID |
+| user_id | BIGINT | FK, NOT NULL | Kullanıcı |
+| menu_id | BIGINT | FK, NOT NULL | Menü |
+| cafeteria_id | BIGINT | FK, NOT NULL | Yemekhane |
+| reservation_date | DATE | NOT NULL | Tarih |
+| meal_type | ENUM | NOT NULL | 'BREAKFAST', 'LUNCH', 'DINNER' |
+| amount | DECIMAL(10, 2) | NOT NULL, DEFAULT 0.00 | Tutar |
+| qr_code | VARCHAR(100) | UNIQUE, NOT NULL | QR kod |
+| is_scholarship_used | TINYINT(1) | DEFAULT 0 | Burs kullanıldı mı? |
+| status | ENUM | DEFAULT 'RESERVED' | 'RESERVED', 'USED', 'CANCELLED', 'EXPIRED' |
+
+### 5.6. events (Etkinlikler)
+
+| Sütun Adı | Veri Tipi | Kısıtlamalar | Açıklama |
+|-----------|-----------|--------------|----------|
+| id | BIGINT | PK, Auto Increment | Etkinlik ID |
+| title | VARCHAR(200) | NOT NULL | Başlık |
+| description | TEXT | NULL | Açıklama |
+| category | ENUM | NOT NULL | 'CONFERENCE', 'WORKSHOP', 'SEMINAR', 'SOCIAL', 'SPORTS', 'CULTURAL', 'CAREER' |
+| event_date | DATE | NOT NULL | Tarih |
+| start_time | TIME | NOT NULL | Başlangıç |
+| end_time | TIME | NULL | Bitiş |
+| location | VARCHAR(200) | NOT NULL | Konum |
+| capacity | INT | NOT NULL, DEFAULT 100 | Kapasite |
+| registered_count | INT | NOT NULL, DEFAULT 0 | Kayıtlı sayısı |
+| registration_deadline | TIMESTAMP | NULL | Son kayıt tarihi |
+| is_paid | TINYINT(1) | DEFAULT 0 | Ücretli mi? |
+| price | DECIMAL(10, 2) | DEFAULT 0.00 | Ücret |
+| organizer_id | BIGINT | FK, NOT NULL | Organizatör |
+| status | ENUM | DEFAULT 'DRAFT' | 'DRAFT', 'PUBLISHED', 'CANCELLED', 'COMPLETED' |
+
+### 5.7. event_registrations (Etkinlik Kayıtları)
+
+| Sütun Adı | Veri Tipi | Kısıtlamalar | Açıklama |
+|-----------|-----------|--------------|----------|
+| id | BIGINT | PK, Auto Increment | Kayıt ID |
+| event_id | BIGINT | FK, NOT NULL | Etkinlik |
+| user_id | BIGINT | FK, NOT NULL | Kullanıcı |
+| registration_date | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Kayıt tarihi |
+| qr_code | VARCHAR(100) | UNIQUE, NOT NULL | QR kod |
+| checked_in | TINYINT(1) | DEFAULT 0 | Check-in yapıldı mı? |
+| checked_in_at | TIMESTAMP | NULL | Check-in zamanı |
+| status | ENUM | DEFAULT 'REGISTERED' | 'REGISTERED', 'WAITLIST', 'CANCELLED', 'ATTENDED' |
+| waitlist_position | INT | NULL | Bekleme listesi sırası |
+
+### 5.8. schedules (Ders Programları)
+
+| Sütun Adı | Veri Tipi | Kısıtlamalar | Açıklama |
+|-----------|-----------|--------------|----------|
+| id | BIGINT | PK, Auto Increment | Program ID |
+| section_id | BIGINT | FK, NOT NULL | Ders bölümü |
+| day_of_week | ENUM | NOT NULL | 'MONDAY' - 'SATURDAY' |
+| start_time | TIME | NOT NULL | Başlangıç saati |
+| end_time | TIME | NOT NULL | Bitiş saati |
+| classroom_id | BIGINT | FK, NOT NULL | Derslik |
+| is_active | TINYINT(1) | DEFAULT 1 | Aktif mi? |
+
+### 5.9. classroom_reservations (Derslik Rezervasyonları)
+
+| Sütun Adı | Veri Tipi | Kısıtlamalar | Açıklama |
+|-----------|-----------|--------------|----------|
+| id | BIGINT | PK, Auto Increment | Rezervasyon ID |
+| classroom_id | BIGINT | FK, NOT NULL | Derslik |
+| user_id | BIGINT | FK, NOT NULL | Talep eden |
+| reservation_date | DATE | NOT NULL | Tarih |
+| start_time | TIME | NOT NULL | Başlangıç |
+| end_time | TIME | NOT NULL | Bitiş |
+| purpose | VARCHAR(255) | NOT NULL | Amaç |
+| status | ENUM | DEFAULT 'PENDING' | 'PENDING', 'APPROVED', 'REJECTED', 'CANCELLED' |
+| approved_by | BIGINT | FK, NULL | Onaylayan admin |
+| rejection_reason | VARCHAR(255) | NULL | Red sebebi |
+
+---
+
 ## 6. Tablo Özet Listesi
 
 | # | Tablo Adı | Part | Açıklama |
@@ -684,3 +820,12 @@ CREATE TABLE excuse_requests (
 | 13 | attendance_sessions | Part 2 | Yoklama oturumları |
 | 14 | attendance_records | Part 2 | Yoklama kayıtları |
 | 15 | excuse_requests | Part 2 | Mazeret talepleri |
+| 16 | cafeterias | Part 3 | Yemekhaneler |
+| 17 | meal_menus | Part 3 | Yemek menüleri |
+| 18 | wallets | Part 3 | Kullanıcı cüzdanları |
+| 19 | transactions | Part 3 | Cüzdan işlemleri |
+| 20 | meal_reservations | Part 3 | Yemek rezervasyonları |
+| 21 | events | Part 3 | Etkinlikler |
+| 22 | event_registrations | Part 3 | Etkinlik kayıtları |
+| 23 | schedules | Part 3 | Ders programları |
+| 24 | classroom_reservations | Part 3 | Derslik rezervasyonları |
