@@ -47,6 +47,14 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         CourseSection section = sectionRepository.findById(request.getSectionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Section", request.getSectionId()));
 
+        // Öğrencinin sadece kendi bölümündeki derslere kayıt olmasına izin ver
+        Department studentDept = student.getDepartment();
+        Department courseDept = section.getCourse().getDepartment();
+        if (studentDept != null && courseDept != null
+                && !studentDept.getId().equals(courseDept.getId())) {
+            throw new BadRequestException("Bu ders kendi bölümünüz dışında. Bu derse kayıt olamazsınız.");
+        }
+
         if (enrollmentRepository.existsByStudentIdAndSectionId(student.getId(), section.getId())) {
             throw new ConflictException("Bu derse zaten kayıtlısınız");
         }

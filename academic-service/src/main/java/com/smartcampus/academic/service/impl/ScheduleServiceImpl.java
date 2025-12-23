@@ -1,7 +1,9 @@
 package com.smartcampus.academic.service.impl;
 
 import com.smartcampus.academic.dto.request.CreateScheduleRequest;
+import com.smartcampus.academic.dto.request.GenerateScheduleRequest;
 import com.smartcampus.academic.dto.response.ScheduleResponse;
+import com.smartcampus.academic.dto.response.GeneratedScheduleResponse;
 import com.smartcampus.academic.entity.Classroom;
 import com.smartcampus.academic.entity.CourseSection;
 import com.smartcampus.academic.entity.Schedule;
@@ -15,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -26,6 +30,9 @@ public class ScheduleServiceImpl implements ScheduleService {
         private final ScheduleRepository scheduleRepository;
         private final CourseSectionRepository sectionRepository;
         private final ClassroomRepository classroomRepository;
+
+        // generateSchedules için basit in-memory id üretici
+        private final AtomicLong generatedIdSequence = new AtomicLong(1L);
 
         @Override
         @Transactional(readOnly = true)
@@ -156,6 +163,97 @@ public class ScheduleServiceImpl implements ScheduleService {
                                         classroomId, dayOfWeek, startTime, endTime);
                 }
                 return !conflicts.isEmpty();
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public List<GeneratedScheduleResponse> generateSchedules(GenerateScheduleRequest request) {
+                // TODO: Tam CSP algoritması ileride eklenecek. Şimdilik basit bir demo implementasyonu.
+                log.info("Generating demo schedules for semester={} year={} sections={}",
+                        request.getSemester(), request.getYear(), request.getSectionIds());
+
+                if (request.getSectionIds() == null || request.getSectionIds().isEmpty()) {
+                        return List.of();
+                }
+
+                // Seçilen bölümleri ve ilişkili dersleri getir
+                List<CourseSection> sections = sectionRepository.findAllById(request.getSectionIds());
+                if (sections.isEmpty()) {
+                        return List.of();
+                }
+
+                // Her alternatif için kullanılacak basit zaman slotları
+                LocalTime[][] timeSlots = new LocalTime[][]{
+                        {LocalTime.of(9, 0), LocalTime.of(10, 30)},
+                        {LocalTime.of(11, 0), LocalTime.of(12, 30)},
+                        {LocalTime.of(14, 0), LocalTime.of(15, 30)},
+                        {LocalTime.of(15, 45), LocalTime.of(17, 15)}
+                };
+
+                Schedule.DayOfWeek[] days = new Schedule.DayOfWeek[]{
+                        Schedule.DayOfWeek.MONDAY,
+                        Schedule.DayOfWeek.TUESDAY,
+                        Schedule.DayOfWeek.WEDNESDAY,
+                        Schedule.DayOfWeek.THURSDAY,
+                        Schedule.DayOfWeek.FRIDAY
+                };
+
+                // Her biri farklı gün/saat kombinasyonları deneyen 2 basit alternatif üretelim
+                List<GeneratedScheduleResponse> results = new ArrayList<>();
+
+                for (int alt = 0; alt < 2; alt++) {
+                        List<GeneratedScheduleResponse.GeneratedScheduleEntry> entries = new ArrayList<>();
+
+                        int slotIndex = alt; // alternatifler arasında slot kaydırma
+                        int dayIndex = 0;
+
+                        for (CourseSection section : sections) {
+                                LocalTime start = timeSlots[slotIndex % timeSlots.length][0];
+                                LocalTime end = timeSlots[slotIndex % timeSlots.length][1];
+                                Schedule.DayOfWeek day = days[dayIndex % days.length];
+
+                                String classroomName = "Derslik henüz atanmadı";
+                                // Varsa mevcut schedule kayıtlarından dersliğin adını tahmin etmeye çalış
+                                List<Schedule> existing = scheduleRepository
+                                        .findBySectionIdAndIsActiveTrue(section.getId());
+                                if (!existing.isEmpty()) {
+                                        Classroom classroom = existing.get(0).getClassroom();
+                                        classroomName = classroom.getBuilding() + " " + classroom.getRoomNumber();
+                                }
+
+                                entries.add(GeneratedScheduleResponse.GeneratedScheduleEntry.builder()
+                                        .sectionId(section.getId())
+                                        .courseCode(section.getCourse().getCode())
+                                        .courseName(section.getCourse().getName())
+                                        .dayOfWeek(day)
+                                        .startTime(start)
+                                        .endTime(end)
+                                        .classroomName(classroomName)
+                                        .build());
+
+                                slotIndex++;
+                                if (slotIndex % timeSlots.length == 0) {
+                                        dayIndex++;
+                                }
+                        }
+
+                        // Basit bir skor hesaplaması: daha az "conflict" varsayıyoruz
+                        int conflicts = 0;
+                        double score = 100.0 - (alt * 5); // alternatiflere göre ufak fark
+
+                        GeneratedScheduleResponse generated = GeneratedScheduleResponse.builder()
+                                .id(generatedIdSequence.getAndIncrement())
+                                .semester(request.getSemester())
+                                .year(request.getYear())
+                                .entries(entries)
+                                .conflicts(conflicts)
+                                .score(score)
+                                .build();
+
+                        results.add(generated);
+                }
+
+                return results;
         }
 
         private ScheduleResponse mapToResponse(Schedule schedule) {

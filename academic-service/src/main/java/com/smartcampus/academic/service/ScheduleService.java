@@ -1,7 +1,9 @@
 package com.smartcampus.academic.service;
 
 import com.smartcampus.academic.dto.request.CreateScheduleRequest;
+import com.smartcampus.academic.dto.request.GenerateScheduleRequest;
 import com.smartcampus.academic.dto.response.ScheduleResponse;
+import com.smartcampus.academic.dto.response.GeneratedScheduleResponse;
 import com.smartcampus.academic.entity.Schedule;
 
 import java.time.LocalTime;
@@ -27,4 +29,11 @@ public interface ScheduleService {
 
     boolean hasConflict(Long classroomId, Schedule.DayOfWeek dayOfWeek,
             LocalTime startTime, LocalTime endTime, Long excludeId);
+
+    /**
+     * Otomatik program oluşturma (basit demo implementasyonu).
+     * Şu aşamada seçilen bölümler için birkaç sabit zaman slotu üzerinden
+     * alternatif programlar üretir ve sadece response döner, veritabanına yazmaz.
+     */
+    List<GeneratedScheduleResponse> generateSchedules(GenerateScheduleRequest request);
 }

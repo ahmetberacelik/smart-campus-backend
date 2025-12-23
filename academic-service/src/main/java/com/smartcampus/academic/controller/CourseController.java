@@ -47,8 +47,14 @@ public class CourseController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<CourseResponse>>> getAllCourses(
+            @RequestParam(required = false) Long departmentId,
             @PageableDefault(size = 20, sort = "code", direction = Sort.Direction.ASC) Pageable pageable) {
-        PageResponse<CourseResponse> courses = courseService.getAllCourses(pageable);
+        PageResponse<CourseResponse> courses;
+        if (departmentId != null) {
+            courses = courseService.getCoursesByDepartment(departmentId, pageable);
+        } else {
+            courses = courseService.getAllCourses(pageable);
+        }
         return ResponseEntity.ok(ApiResponse.success(courses));
     }
 
