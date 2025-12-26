@@ -37,8 +37,7 @@ public class JwtTokenProvider {
             return generateAccessToken(
                     customUserDetails.getId(),
                     customUserDetails.getUsername(),
-                    customUserDetails.getRole().name()
-            );
+                    customUserDetails.getRole().name());
         }
         // Fallback - sadece email ile (geriye dönük uyumluluk)
         return generateAccessToken(null, userDetails.getUsername(), null);
@@ -46,7 +45,8 @@ public class JwtTokenProvider {
 
     /**
      * Tam bilgi ile JWT Access Token oluşturur.
-     * Token payload'ı: { sub: "userId", email: "...", role: "STUDENT|FACULTY|ADMIN", iat: ..., exp: ... }
+     * Token payload'ı: { sub: "userId", email: "...", role:
+     * "STUDENT|FACULTY|ADMIN", iat: ..., exp: ... }
      */
     public String generateAccessToken(Long userId, String email, String role) {
         Date now = new Date();
@@ -74,7 +74,8 @@ public class JwtTokenProvider {
     }
 
     /**
-     * @deprecated Yeni generateAccessToken(Long userId, String email, String role) metodunu kullanın
+     * @deprecated Yeni generateAccessToken(Long userId, String email, String role)
+     *             metodunu kullanın
      */
     @Deprecated
     public String generateAccessToken(String email) {
@@ -100,7 +101,45 @@ public class JwtTokenProvider {
                 .parseSignedClaims(token)
                 .getPayload();
 
+        // Subject olarak userId kullanılıyorsa, email claim'den al
+        String email = claims.get("email", String.class);
+        if (email != null) {
+            return email;
+        }
+        // Geriye dönük uyumluluk: subject olarak email kullanılmış olabilir
         return claims.getSubject();
+    }
+
+    /**
+     * JWT token'dan userId'yi çıkarır.
+     * Token subject'i userId ise doğrudan döndürür.
+     */
+    public Long getUserIdFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        try {
+            return Long.parseLong(claims.getSubject());
+        } catch (NumberFormatException e) {
+            // Subject email ise, null döndür
+            return null;
+        }
+    }
+
+    /**
+     * JWT token'dan role bilgisini çıkarır.
+     */
+    public String getRoleFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        return claims.get("role", String.class);
     }
 
     public boolean validateToken(String token) {
@@ -133,4 +172,3 @@ public class JwtTokenProvider {
         return refreshTokenExpiration;
     }
 }
-
