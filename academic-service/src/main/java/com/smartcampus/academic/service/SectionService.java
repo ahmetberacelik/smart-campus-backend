@@ -16,6 +16,10 @@ public interface SectionService {
 
     List<CourseSectionResponse> getAllSections();
 
+    List<CourseSectionResponse> getSectionsByInstructor(Long instructorId);
+
+    List<CourseSectionResponse> getSectionsByInstructorUserId(Long userId);
+
     List<CourseSectionResponse> getSectionsByCourse(Long courseId);
 
     List<CourseSectionResponse> getSectionsBySemesterAndYear(String semester, Integer year);

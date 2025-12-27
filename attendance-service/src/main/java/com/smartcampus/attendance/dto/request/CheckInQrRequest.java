@@ -1,7 +1,6 @@
 package com.smartcampus.attendance.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,10 +15,9 @@ public class CheckInQrRequest {
     @NotBlank(message = "QR kod zorunludur")
     private String qrCode;
 
-    @NotNull(message = "Enlem zorunludur")
+    // Konum opsiyonel - QR kod zaten güvenli olduğu için konum kontrolü yapılmayabilir
     private Double latitude;
 
-    @NotNull(message = "Boylam zorunludur")
     private Double longitude;
 
     private Double accuracy;

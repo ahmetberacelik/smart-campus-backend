@@ -29,10 +29,10 @@ public class AttendanceSession {
     @Column(name = "session_date", nullable = false)
     private LocalDate sessionDate;
 
-    @Column(name = "start_time", nullable = false)
+    @Column(name = "start_time", nullable = false, columnDefinition = "TIME")
     private LocalTime startTime;
 
-    @Column(name = "end_time")
+    @Column(name = "end_time", columnDefinition = "TIME")
     private LocalTime endTime;
 
     @Column(name = "latitude", nullable = false)

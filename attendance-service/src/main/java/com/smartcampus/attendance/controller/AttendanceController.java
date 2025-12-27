@@ -35,9 +35,19 @@ public class AttendanceController {
     public ResponseEntity<ApiResponse<SessionResponse>> createSession(
             @CurrentUser CustomUserDetails userDetails,
             @Valid @RequestBody CreateSessionRequest request) {
-        SessionResponse response = attendanceService.createSession(userDetails.getId(), request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Yoklama oturumu başlatıldı", response));
+        try {
+            System.out.println("🔍 AttendanceController: POST /sessions called with instructorId: " + userDetails.getId());
+            System.out.println("🔍 AttendanceController: Request - sectionId: " + request.getSectionId());
+            SessionResponse response = attendanceService.createSession(userDetails.getId(), request);
+            System.out.println("✅ AttendanceController: Session created successfully");
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.success("Yoklama oturumu başlatıldı", response));
+        } catch (Exception e) {
+            System.err.println("❌ AttendanceController: Error in createSession: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Yoklama oturumu başlatılırken bir hata oluştu: " + e.getMessage(), "INTERNAL_ERROR"));
+        }
     }
 
     @GetMapping("/sessions/{id}")

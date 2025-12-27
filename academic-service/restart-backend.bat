@@ -1,0 +1,9 @@
+@echo off
+echo Backend yeniden başlatılıyor...
+cd /d %~dp0
+echo Maven ile derleniyor...
+call mvn clean compile
+echo Backend başlatılıyor...
+call mvn spring-boot:run
+pause
+

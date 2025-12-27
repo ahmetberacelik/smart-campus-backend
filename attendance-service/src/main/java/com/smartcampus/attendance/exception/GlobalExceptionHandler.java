@@ -53,8 +53,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
-        log.error("Unexpected error: ", ex);
+        log.error("❌ Unexpected error: {} - {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
+        log.error("❌ Stack trace: ", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Beklenmeyen bir hata oluştu", "INTERNAL_ERROR"));
+                .body(ApiResponse.error("Beklenmeyen bir hata oluştu: " + ex.getClass().getSimpleName() + " - " + ex.getMessage(), "INTERNAL_ERROR"));
     }
 }

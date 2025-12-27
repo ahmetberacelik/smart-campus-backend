@@ -60,46 +60,87 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     @Transactional
     public SessionResponse createSession(Long instructorId, CreateSessionRequest request) {
-        // GPS koordinatları null ise varsayılan değerleri kullan
-        Double latitude = request.getLatitude() != null ? request.getLatitude() : defaultLatitude;
-        Double longitude = request.getLongitude() != null ? request.getLongitude() : defaultLongitude;
+        try {
+            log.info("🔍 createSession: Creating attendance session for instructorId: {}, sectionId: {}", instructorId, request.getSectionId());
+            
+            // GPS koordinatları null ise varsayılan değerleri kullan
+            Double latitude = request.getLatitude() != null ? request.getLatitude() : defaultLatitude;
+            Double longitude = request.getLongitude() != null ? request.getLongitude() : defaultLongitude;
+            log.info("📍 createSession: Using coordinates - lat: {}, lng: {}", latitude, longitude);
 
-        // Tarih ve saat - frontend'den gelirse kullan, yoksa şimdiki zamanı al
-        LocalDate sessionDate = request.getSessionDate() != null ? request.getSessionDate() : LocalDate.now();
-        LocalTime startTime = request.getStartTime() != null
-                ? request.getStartTime().toLocalTime()
-                : LocalTime.now();
-        LocalTime endTime = null;
-        if (request.getEndTime() != null) {
-            endTime = request.getEndTime().toLocalTime();
-        } else if (request.getDurationMinutes() != null) {
-            endTime = startTime.plusMinutes(request.getDurationMinutes());
+            // Tarih ve saat - frontend'den gelirse kullan, yoksa şimdiki zamanı al
+            LocalDate sessionDate = request.getSessionDate() != null ? request.getSessionDate() : LocalDate.now();
+            LocalTime startTime = null;
+            LocalTime endTime = null;
+            
+            try {
+                if (request.getStartTime() != null) {
+                    startTime = request.getStartTime().toLocalTime();
+                } else {
+                    startTime = LocalTime.now();
+                }
+                
+                if (request.getEndTime() != null) {
+                    endTime = request.getEndTime().toLocalTime();
+                } else if (request.getDurationMinutes() != null) {
+                    endTime = startTime.plusMinutes(request.getDurationMinutes());
+                }
+                log.info("⏰ createSession: Session time - date: {}, start: {}, end: {}", sessionDate, startTime, endTime);
+            } catch (Exception e) {
+                log.error("❌ createSession: Error parsing time: {}", e.getMessage(), e);
+                throw new BadRequestException("Tarih/saat formatı geçersiz: " + e.getMessage(), "INVALID_TIME_FORMAT");
+            }
+
+            // Section ID kontrolü
+            if (request.getSectionId() == null) {
+                log.error("❌ createSession: sectionId is null");
+                throw new BadRequestException("Section ID zorunludur", "SECTION_ID_REQUIRED");
+            }
+
+            AttendanceSession session = AttendanceSession.builder()
+                    .sectionId(request.getSectionId())
+                    .instructorId(instructorId)
+                    .sessionDate(sessionDate)
+                    .startTime(startTime)
+                    .endTime(endTime)
+                    .latitude(latitude)
+                    .longitude(longitude)
+                    .geofenceRadius(request.getGeofenceRadius() != null
+                            ? request.getGeofenceRadius()
+                            : defaultGeofenceRadius)
+                    .status(SessionStatus.ACTIVE)
+                    .build();
+
+            log.info("💾 createSession: Saving session to database...");
+            // Önce session'ı kaydet ki ID oluşsun
+            session = sessionRepository.save(session);
+            log.info("✅ createSession: Session saved with ID: {}", session.getId());
+
+            // Artık session.getId() != null, QR kodu oluşturabiliriz
+            try {
+                log.info("🔐 createSession: Generating QR code...");
+                String qrCode = qrCodeGenerator.generateQrCode(session.getId());
+                session.setQrCode(qrCode);
+                session.setQrCodeGeneratedAt(LocalDateTime.now());
+                session = sessionRepository.save(session);
+                log.info("✅ createSession: QR code generated successfully");
+            } catch (Exception e) {
+                log.error("❌ createSession: Error generating QR code: {}", e.getMessage(), e);
+                // QR kod hatası olsa bile session'ı döndür
+            }
+
+            SessionResponse response = mapToSessionResponse(session);
+            log.info("✅ createSession: Session created successfully - ID: {}", session.getId());
+            return response;
+            
+        } catch (BadRequestException | ResourceNotFoundException e) {
+            log.error("❌ createSession: Business error: {}", e.getMessage());
+            throw e; // Bu hataları tekrar fırlat
+        } catch (Exception e) {
+            log.error("❌ createSession: Unexpected error for instructorId {}: {}", instructorId, e.getMessage(), e);
+            log.error("❌ Stack trace: ", e);
+            throw new RuntimeException("Yoklama oturumu oluşturulurken beklenmeyen bir hata oluştu: " + e.getMessage(), e);
         }
-
-        AttendanceSession session = AttendanceSession.builder()
-                .sectionId(request.getSectionId())
-                .instructorId(instructorId)
-                .sessionDate(sessionDate)
-                .startTime(startTime)
-                .endTime(endTime)
-                .latitude(latitude)
-                .longitude(longitude)
-                .geofenceRadius(request.getGeofenceRadius() != null
-                        ? request.getGeofenceRadius()
-                        : defaultGeofenceRadius)
-                .status(SessionStatus.ACTIVE)
-                .build();
-
-        // Önce session'ı kaydet ki ID oluşsun
-        session = sessionRepository.save(session);
-
-        // Artık session.getId() != null, QR kodu oluşturabiliriz
-        String qrCode = qrCodeGenerator.generateQrCode(session.getId());
-        session.setQrCode(qrCode);
-        session.setQrCodeGeneratedAt(LocalDateTime.now());
-        session = sessionRepository.save(session);
-
-        return mapToSessionResponse(session);
     }
 
     @Override
@@ -292,14 +333,28 @@ public class AttendanceServiceImpl implements AttendanceService {
             throw new BadRequestException("QR kod süresi dolmuş", "QR_CODE_EXPIRED");
         }
 
-        double distance = gpsUtils.calculateDistance(
-                session.getLatitude(), session.getLongitude(),
-                request.getLatitude(), request.getLongitude());
+        // Konum bilgisi varsa kontrol et, yoksa sadece QR kod doğrulaması yeterli
+        Double latitude = request.getLatitude();
+        Double longitude = request.getLongitude();
+        Double distance = null;
+        
+        if (latitude != null && longitude != null) {
+            // Konum bilgisi varsa geofence kontrolü yap
+            distance = gpsUtils.calculateDistance(
+                    session.getLatitude(), session.getLongitude(),
+                    latitude, longitude);
 
-        if (distance > session.getGeofenceRadius()) {
-            throw new BadRequestException("Derslik konumunun dışındasınız", "OUT_OF_GEOFENCE",
-                    Map.of("distance", Math.round(distance * 10) / 10.0,
-                            "allowedRadius", session.getGeofenceRadius()));
+            if (distance > session.getGeofenceRadius()) {
+                throw new BadRequestException("Derslik konumunun dışındasınız", "OUT_OF_GEOFENCE",
+                        Map.of("distance", Math.round(distance * 10) / 10.0,
+                                "allowedRadius", session.getGeofenceRadius()));
+            }
+        } else {
+            // Konum bilgisi yoksa session'ın konumunu kullan (sadece kayıt için)
+            latitude = session.getLatitude();
+            longitude = session.getLongitude();
+            distance = 0.0; // QR kod kullanıldığı için mesafe 0 kabul edilir
+            log.info("📍 QR check-in: Location not provided, using session location");
         }
 
         AttendanceRecord record = AttendanceRecord.builder()
@@ -308,8 +363,8 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .status(AttendanceStatus.PRESENT)
                 .checkInTime(LocalDateTime.now())
                 .checkInMethod(CheckInMethod.QR_CODE)
-                .latitude(request.getLatitude())
-                .longitude(request.getLongitude())
+                .latitude(latitude)
+                .longitude(longitude)
                 .distanceFromClassroom(distance)
                 .gpsAccuracy(request.getAccuracy())
                 .ipAddress(ipAddress)
@@ -322,7 +377,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         return CheckInResponse.builder()
                 .sessionId(sessionId)
                 .checkInTime(record.getCheckInTime())
-                .distance(Math.round(distance * 10) / 10.0)
+                .distance(distance != null ? Math.round(distance * 10) / 10.0 : 0.0)
                 .method(CheckInMethod.QR_CODE)
                 .status(AttendanceStatus.PRESENT)
                 .build();
