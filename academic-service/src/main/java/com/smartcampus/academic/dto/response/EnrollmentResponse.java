@@ -46,7 +46,18 @@ public class EnrollmentResponse {
     private LocalDateTime updatedAt;
 
     public static EnrollmentResponse from(Enrollment enrollment, String studentName) {
+        if (enrollment == null) {
+            throw new IllegalArgumentException("Enrollment cannot be null");
+        }
+        
         CourseSection section = enrollment.getSection();
+        if (section == null) {
+            throw new IllegalArgumentException("Enrollment section cannot be null");
+        }
+        
+        if (enrollment.getStudent() == null) {
+            throw new IllegalArgumentException("Enrollment student cannot be null");
+        }
         
         // Instructor name - null safety
         String instructorName = null;
@@ -55,14 +66,24 @@ public class EnrollmentResponse {
             instructorName = instructorUser.getFirstName() + " " + instructorUser.getLastName();
         }
         
+        // Course - null safety
+        String courseCode = null;
+        String courseName = null;
+        Integer credits = null;
+        if (section.getCourse() != null) {
+            courseCode = section.getCourse().getCode();
+            courseName = section.getCourse().getName();
+            credits = section.getCourse().getCredits();
+        }
+        
         return EnrollmentResponse.builder()
                 .id(enrollment.getId())
                 .studentId(enrollment.getStudent().getId())
                 .studentNumber(enrollment.getStudent().getStudentNumber())
-                .studentName(studentName)
+                .studentName(studentName != null ? studentName : "Bilinmeyen Öğrenci")
                 .sectionId(section.getId())
-                .courseCode(section.getCourse().getCode())
-                .courseName(section.getCourse().getName())
+                .courseCode(courseCode)
+                .courseName(courseName)
                 .sectionNumber(section.getSectionNumber())
                 // YENİ ALANLAR
                 .semester(section.getSemester())
@@ -70,7 +91,7 @@ public class EnrollmentResponse {
                 .instructorName(instructorName)
                 .capacity(section.getCapacity())
                 .enrolledCount(section.getEnrolledCount())
-                .credits(section.getCourse().getCredits())
+                .credits(credits)
                 // MEVCUT ALANLAR
                 .status(enrollment.getStatus())
                 .enrollmentDate(enrollment.getEnrollmentDate())

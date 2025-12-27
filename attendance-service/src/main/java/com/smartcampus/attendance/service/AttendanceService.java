@@ -4,6 +4,7 @@ import com.smartcampus.attendance.dto.request.CheckInQrRequest;
 import com.smartcampus.attendance.dto.request.CheckInRequest;
 import com.smartcampus.attendance.dto.request.CreateSessionRequest;
 import com.smartcampus.attendance.dto.response.*;
+import com.smartcampus.attendance.entity.AttendanceSession;
 import com.smartcampus.attendance.entity.SessionStatus;
 import org.springframework.data.domain.Pageable;
 
@@ -36,4 +37,9 @@ public interface AttendanceService {
      * Öğrencinin kayıtlı olduğu derslerin aktif yoklama oturumlarını döner
      */
     List<SessionResponse> getActiveSessionsForStudent(Long studentId);
+    
+    /**
+     * Session'a yoklama vermeyen öğrenciler için otomatik ABSENT kaydı oluşturur
+     */
+    void createAbsentRecordsForMissingStudents(AttendanceSession session);
 }

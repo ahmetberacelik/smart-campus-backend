@@ -195,9 +195,45 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<EnrollmentResponse> getSectionEnrollments(Long sectionId, Pageable pageable) {
-        Page<EnrollmentResponse> page = enrollmentRepository.findBySectionId(sectionId, pageable)
-                .map(e -> EnrollmentResponse.from(e, getStudentName(e.getStudent())));
-        return PageResponse.from(page);
+        try {
+            log.info("getSectionEnrollments çağrıldı - sectionId: {}", sectionId);
+            
+            Page<Enrollment> enrollmentPage = enrollmentRepository.findBySectionId(sectionId, pageable);
+            log.info("Bulunan enrollment sayısı: {} (toplam: {})", enrollmentPage.getNumberOfElements(), enrollmentPage.getTotalElements());
+            
+            // Her enrollment'ı ayrı ayrı işle, hata olanları atlayarak devam et
+            List<EnrollmentResponse> responses = new ArrayList<>();
+            for (Enrollment enrollment : enrollmentPage.getContent()) {
+                try {
+                    String studentName = getStudentName(enrollment.getStudent());
+                    EnrollmentResponse response = EnrollmentResponse.from(enrollment, studentName);
+                    responses.add(response);
+                    log.debug("Enrollment işlendi - enrollmentId: {}, studentId: {}, studentName: {}", 
+                            enrollment.getId(), enrollment.getStudent() != null ? enrollment.getStudent().getId() : "null", studentName);
+                } catch (Exception ex) {
+                    log.error("EnrollmentResponse.from hatası - enrollmentId: {}, sectionId: {}, error: {}", 
+                            enrollment.getId(), sectionId, ex.getMessage(), ex);
+                    // Hata olan enrollment'ı atla, diğerlerini işlemeye devam et
+                }
+            }
+            
+            log.info("Başarıyla işlenen enrollment sayısı: {}", responses.size());
+            
+            // PageResponse oluştur (manuel olarak)
+            Page<EnrollmentResponse> page = new org.springframework.data.domain.PageImpl<>(
+                    responses, 
+                    pageable, 
+                    enrollmentPage.getTotalElements()
+            );
+            
+            log.info("getSectionEnrollments tamamlandı - sectionId: {}, dönen enrollment sayısı: {}, toplam: {}", 
+                    sectionId, responses.size(), page.getTotalElements());
+            
+            return PageResponse.from(page);
+        } catch (Exception e) {
+            log.error("getSectionEnrollments hatası - sectionId: {}, error: {}", sectionId, e.getMessage(), e);
+            throw new RuntimeException("Section öğrencileri getirilirken hata oluştu: " + e.getMessage(), e);
+        }
     }
 
     @Override

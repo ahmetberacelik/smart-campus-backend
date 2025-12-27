@@ -1,13 +1,17 @@
 package com.smartcampus.meal.controller;
 
+import com.smartcampus.meal.dto.request.CreateMenuRequest;
 import com.smartcampus.meal.dto.response.ApiResponse;
 import com.smartcampus.meal.dto.response.MenuResponse;
 import com.smartcampus.meal.entity.Cafeteria;
+import com.smartcampus.meal.entity.MealMenu;
 import com.smartcampus.meal.repository.CafeteriaRepository;
 import com.smartcampus.meal.service.MenuService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -95,5 +99,92 @@ public class MenuController {
             menus = menuService.getMenusForDate(LocalDate.now());
         }
         return ResponseEntity.ok(ApiResponse.success(menus));
+    }
+
+    /**
+     * Menü oluştur
+     */
+    @PostMapping("/menus")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<MenuResponse>> createMenu(@Valid @RequestBody CreateMenuRequest request) {
+        try {
+            MealMenu.MealType mealType;
+            try {
+                mealType = MealMenu.MealType.valueOf(request.getMealType().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Geçersiz öğün tipi: " + request.getMealType() + ". LUNCH veya DINNER olmalı.");
+            }
+
+            MenuResponse menu = menuService.createMenu(
+                    request.getCafeteriaId(),
+                    request.getMenuDate(),
+                    mealType,
+                    request.getItemsJson(),
+                    request.getNutritionJson(),
+                    request.getPrice() != null ? request.getPrice() : java.math.BigDecimal.ZERO,
+                    request.getIsVegan() != null ? request.getIsVegan() : false,
+                    request.getIsVegetarian() != null ? request.getIsVegetarian() : false
+            );
+
+            return ResponseEntity.ok(ApiResponse.success(menu));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage(), "MENU_CREATION_ERROR"));
+        }
+    }
+
+    /**
+     * Menü yayınla
+     */
+    @PostMapping("/menus/{id}/publish")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> publishMenu(@PathVariable Long id) {
+        try {
+            menuService.publishMenu(id);
+            return ResponseEntity.ok(ApiResponse.success(null));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage(), "MENU_PUBLISH_ERROR"));
+        }
+    }
+
+    /**
+     * Menü güncelle
+     */
+    @PutMapping("/menus/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<MenuResponse>> updateMenu(
+            @PathVariable Long id,
+            @RequestBody CreateMenuRequest request) {
+        try {
+            MenuResponse menu = menuService.updateMenu(
+                    id,
+                    request.getItemsJson(),
+                    request.getNutritionJson(),
+                    request.getPrice() != null ? request.getPrice() : java.math.BigDecimal.ZERO,
+                    request.getIsVegan() != null ? request.getIsVegan() : false,
+                    request.getIsVegetarian() != null ? request.getIsVegetarian() : false
+            );
+
+            return ResponseEntity.ok(ApiResponse.success(menu));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage(), "MENU_UPDATE_ERROR"));
+        }
+    }
+
+    /**
+     * Menü sil
+     */
+    @DeleteMapping("/menus/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteMenu(@PathVariable Long id) {
+        try {
+            menuService.deleteMenu(id);
+            return ResponseEntity.ok(ApiResponse.success(null));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage(), "MENU_DELETE_ERROR"));
+        }
     }
 }

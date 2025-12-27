@@ -8,6 +8,7 @@ import com.smartcampus.attendance.repository.AttendanceRecordRepository;
 import com.smartcampus.attendance.repository.AttendanceSessionRepository;
 import com.smartcampus.attendance.repository.CourseSectionInfoRepository;
 import com.smartcampus.attendance.repository.StudentInfoRepository;
+import com.smartcampus.attendance.service.AttendanceService;
 import com.smartcampus.attendance.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ public class AbsenceWarningScheduler {
     private final CourseSectionInfoRepository courseSectionInfoRepository;
     private final StudentInfoRepository studentInfoRepository;
     private final NotificationService notificationService;
+    private final AttendanceService attendanceService;
 
     private static final int WARNING_THRESHOLD_PERCENT = 30;
     private static final int CRITICAL_THRESHOLD_PERCENT = 50;
@@ -114,6 +116,15 @@ public class AbsenceWarningScheduler {
                 session.getStatus() == com.smartcampus.attendance.entity.SessionStatus.ACTIVE) {
                 session.setStatus(com.smartcampus.attendance.entity.SessionStatus.CLOSED);
                 sessionRepository.save(session);
+                
+                // Yoklama vermeyen öğrenciler için otomatik devamsızlık kaydı oluştur
+                try {
+                    attendanceService.createAbsentRecordsForMissingStudents(session);
+                } catch (Exception e) {
+                    log.error("Otomatik kapatılan oturum için devamsızlık kaydı oluşturulurken hata - sessionId: {}, error: {}", 
+                            session.getId(), e.getMessage(), e);
+                }
+                
                 closedCount++;
             }
         }
