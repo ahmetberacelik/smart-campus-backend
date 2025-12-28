@@ -4,6 +4,7 @@ import com.smartcampus.academic.dto.request.CreateScheduleRequest;
 import com.smartcampus.academic.dto.request.GenerateScheduleRequest;
 import com.smartcampus.academic.dto.response.ScheduleResponse;
 import com.smartcampus.academic.dto.response.GeneratedScheduleResponse;
+import com.smartcampus.academic.dto.response.MyScheduleResponse;
 import com.smartcampus.academic.entity.Schedule;
 
 import java.time.LocalTime;
@@ -36,4 +37,10 @@ public interface ScheduleService {
      * alternatif programlar üretir ve sadece response döner, veritabanına yazmaz.
      */
     List<GeneratedScheduleResponse> generateSchedules(GenerateScheduleRequest request);
+
+    /**
+     * Öğrencinin/öğretim üyesinin ders programını getir.
+     * Kullanıcının kayıtlı olduğu section'ların schedule'larını döndürür.
+     */
+    MyScheduleResponse getMySchedule(Long userId);
 }
