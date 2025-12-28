@@ -28,7 +28,29 @@ public class JwtTokenProvider {
                 .parseSignedClaims(token)
                 .getPayload();
 
-        return Long.parseLong(claims.getSubject());
+        try {
+            return Long.parseLong(claims.getSubject());
+        } catch (NumberFormatException e) {
+            // Subject email ise, null döndür
+            log.debug("Subject is not a numeric userId, likely an email: {}", claims.getSubject());
+            return null;
+        }
+    }
+
+    public String getEmailFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        // Önce email claim'i kontrol et
+        String email = claims.get("email", String.class);
+        if (email != null) {
+            return email;
+        }
+        // Subject email olabilir
+        return claims.getSubject();
     }
 
     public String getRoleFromToken(String token) {

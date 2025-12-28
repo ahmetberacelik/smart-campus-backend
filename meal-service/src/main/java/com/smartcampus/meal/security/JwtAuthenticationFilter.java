@@ -24,17 +24,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+            FilterChain filterChain) throws ServletException, IOException {
         try {
             String jwt = getJwtFromRequest(request);
 
             if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
                 Long userId = tokenProvider.getUserIdFromToken(jwt);
+                String email = tokenProvider.getEmailFromToken(jwt);
                 String role = tokenProvider.getRoleFromToken(jwt);
 
-                CustomUserDetails userDetails = new CustomUserDetails(userId, role);
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                // userId varsa kullan, yoksa email üzerinden işlem yap
+                CustomUserDetails userDetails;
+                if (userId != null) {
+                    userDetails = new CustomUserDetails(userId, email, role);
+                } else {
+                    // userId yoksa, email'den user lookup yapılması gerekir
+                    // Şimdilik email'i identifier olarak kullanalım
+                    log.warn("Token does not contain userId, using email as fallback: {}", email);
+                    userDetails = new CustomUserDetails(email, role);
+                }
+
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
