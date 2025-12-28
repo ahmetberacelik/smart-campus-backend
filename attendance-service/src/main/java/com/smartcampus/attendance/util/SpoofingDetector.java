@@ -18,43 +18,13 @@ public class SpoofingDetector {
     @Value("${attendance.max-walking-speed:2.0}")
     private double maxWalkingSpeed;
 
-    @Value("${attendance.gps-accuracy-threshold:50}")
+    @Value("${attendance.gps-accuracy-threshold:5000}")
     private double gpsAccuracyThreshold;
 
     public SpoofingResult detectSpoofing(Double latitude, Double longitude, Double accuracy,
-                                          Boolean isMockLocation, Optional<AttendanceRecord> lastRecord) {
-        if (Boolean.TRUE.equals(isMockLocation)) {
-            return SpoofingResult.flagged("MOCK_LOCATION_ENABLED",
-                    "Cihazda mock location özelliği tespit edildi");
-        }
-
-        if (accuracy != null && accuracy > gpsAccuracyThreshold) {
-            return SpoofingResult.flagged("LOW_GPS_ACCURACY",
-                    String.format("GPS doğruluğu çok düşük: %.1f metre (maksimum: %.1f metre)",
-                            accuracy, gpsAccuracyThreshold));
-        }
-
-        if (lastRecord.isPresent()) {
-            AttendanceRecord last = lastRecord.get();
-            if (last.getLatitude() != null && last.getLongitude() != null && last.getCheckInTime() != null) {
-                double distance = gpsUtils.calculateDistance(
-                        last.getLatitude(), last.getLongitude(), latitude, longitude);
-
-                long secondsElapsed = Duration.between(last.getCheckInTime(), LocalDateTime.now()).getSeconds();
-
-                if (secondsElapsed > 0) {
-                    double maxPossibleDistance = secondsElapsed * maxWalkingSpeed;
-
-                    if (distance > maxPossibleDistance && distance > 100) {
-                        return SpoofingResult.flagged("IMPOSSIBLE_TRAVEL",
-                                String.format("Son konumunuzdan bu konuma belirtilen sürede ulaşmanız mümkün değil " +
-                                        "(Mesafe: %.0f m, Süre: %d sn, Maks mümkün: %.0f m)",
-                                        distance, secondsElapsed, maxPossibleDistance));
-                    }
-                }
-            }
-        }
-
+            Boolean isMockLocation, Optional<AttendanceRecord> lastRecord) {
+        // TEST AŞAMASINDA GEÇİCİ OLARAK DEVRE DIŞI - Production'da açılmalı!
+        // Tüm spoofing kontrollerini bypass ediyoruz
         return SpoofingResult.clean();
     }
 

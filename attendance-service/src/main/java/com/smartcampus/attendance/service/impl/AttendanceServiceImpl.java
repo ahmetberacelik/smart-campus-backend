@@ -353,7 +353,19 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     @Transactional
-    public CheckInResponse checkIn(Long studentId, Long sessionId, CheckInRequest request, String ipAddress) {
+    public CheckInResponse checkIn(Long userId, Long sessionId, CheckInRequest request, String ipAddress) {
+        // Önce user_id'den students.id'yi bul (attendance_records tablosu students.id
+        // kullanıyor)
+        String getStudentIdSql = "SELECT id FROM students WHERE user_id = ?";
+        Long studentId;
+        try {
+            studentId = jdbcTemplate.queryForObject(getStudentIdSql, Long.class, userId);
+            log.info("📚 CheckIn: User {} için student_id: {}", userId, studentId);
+        } catch (Exception e) {
+            log.error("❌ CheckIn: User {} için student kaydı bulunamadı: {}", userId, e.getMessage());
+            throw new ResourceNotFoundException("Öğrenci", "user_id", userId);
+        }
+
         AttendanceSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Yoklama oturumu", "id", sessionId));
 
@@ -414,7 +426,19 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     @Transactional
-    public CheckInResponse checkInWithQr(Long studentId, Long sessionId, CheckInQrRequest request, String ipAddress) {
+    public CheckInResponse checkInWithQr(Long userId, Long sessionId, CheckInQrRequest request, String ipAddress) {
+        // Önce user_id'den students.id'yi bul (attendance_records tablosu students.id
+        // kullanıyor)
+        String getStudentIdSql = "SELECT id FROM students WHERE user_id = ?";
+        Long studentId;
+        try {
+            studentId = jdbcTemplate.queryForObject(getStudentIdSql, Long.class, userId);
+            log.info("📚 CheckInWithQr: User {} için student_id: {}", userId, studentId);
+        } catch (Exception e) {
+            log.error("❌ CheckInWithQr: User {} için student kaydı bulunamadı: {}", userId, e.getMessage());
+            throw new ResourceNotFoundException("Öğrenci", "user_id", userId);
+        }
+
         AttendanceSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Yoklama oturumu", "id", sessionId));
 
