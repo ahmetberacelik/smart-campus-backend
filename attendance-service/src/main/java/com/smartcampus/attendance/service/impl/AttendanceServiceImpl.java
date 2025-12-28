@@ -612,8 +612,25 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     @Override
-    public List<SessionResponse> getActiveSessionsForStudent(Long studentId) {
+    public List<SessionResponse> getActiveSessionsForStudent(Long userId) {
         LocalDateTime now = LocalDateTime.now();
+
+        // Önce user_id'den students.id'yi bul (enrollments tablosu students.id
+        // kullanıyor)
+        String getStudentIdSql = "SELECT id FROM students WHERE user_id = ?";
+        Long studentId;
+        try {
+            studentId = jdbcTemplate.queryForObject(getStudentIdSql, Long.class, userId);
+            log.info("📚 User {} için student_id: {}", userId, studentId);
+        } catch (Exception e) {
+            log.error("❌ User {} için student kaydı bulunamadı: {}", userId, e.getMessage());
+            return new ArrayList<>();
+        }
+
+        if (studentId == null) {
+            log.warn("⚠️ User {} için student kaydı bulunamadı", userId);
+            return new ArrayList<>();
+        }
 
         // Öğrencinin kayıtlı olduğu section'ları enrollment tablosundan çek
         String enrollmentSql = "SELECT DISTINCT section_id FROM enrollments " +
@@ -621,7 +638,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         List<Long> enrolledSectionIds;
         try {
             enrolledSectionIds = jdbcTemplate.queryForList(enrollmentSql, Long.class, studentId);
-            log.info("📚 Öğrenci {} için kayıtlı section sayısı: {}", studentId, enrolledSectionIds.size());
+            log.info("📚 Student {} için kayıtlı section sayısı: {}", studentId, enrolledSectionIds.size());
         } catch (Exception e) {
             log.error("❌ Enrollment bilgisi alınırken hata: {}", e.getMessage());
             enrolledSectionIds = new ArrayList<>();
@@ -629,7 +646,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         // Eğer öğrenci hiçbir derse kayıtlı değilse boş liste dön
         if (enrolledSectionIds.isEmpty()) {
-            log.info("⚠️ Öğrenci {} hiçbir derse kayıtlı görünmüyor", studentId);
+            log.info("⚠️ Student {} hiçbir derse kayıtlı görünmüyor", studentId);
             return new ArrayList<>();
         }
 
@@ -637,7 +654,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         List<AttendanceSession> activeSessions = sessionRepository.findActiveSessions(
                 enrolledSectionIds, SessionStatus.ACTIVE);
 
-        log.info("🔍 Öğrenci {} için {} aktif yoklama oturumu bulundu", studentId, activeSessions.size());
+        log.info("🔍 Student {} için {} aktif yoklama oturumu bulundu", studentId, activeSessions.size());
 
         // Öğrencinin zaten yoklama verdiği oturumları ve süresi geçmiş olanları
         // filtrele
@@ -649,7 +666,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 continue;
             }
 
-            // Öğrenci bu oturuma yoklama vermiş mi kontrol et
+            // Öğrenci bu oturuma yoklama vermiş mi kontrol et (studentId kullan)
             boolean alreadyCheckedIn = recordRepository.findBySessionIdAndStudentId(
                     session.getId(), studentId).isPresent();
 
@@ -659,11 +676,11 @@ public class AttendanceServiceImpl implements AttendanceService {
                 log.info("✅ Aktif yoklama oturumu bulundu: sessionId={}, sectionId={}",
                         session.getId(), session.getSectionId());
             } else {
-                log.debug("✓ Öğrenci {} oturum {} için zaten yoklama vermiş", studentId, session.getId());
+                log.debug("✓ Student {} oturum {} için zaten yoklama vermiş", studentId, session.getId());
             }
         }
 
-        log.info("📋 Öğrenci {} için toplam {} aktif yoklama oturumu döndürülüyor", studentId, result.size());
+        log.info("📋 Student {} için toplam {} aktif yoklama oturumu döndürülüyor", studentId, result.size());
         return result;
     }
 
