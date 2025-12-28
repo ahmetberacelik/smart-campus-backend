@@ -64,8 +64,9 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Transactional
     public SessionResponse createSession(Long instructorId, CreateSessionRequest request) {
         try {
-            log.info("🔍 createSession: Creating attendance session for instructorId: {}, sectionId: {}", instructorId, request.getSectionId());
-            
+            log.info("🔍 createSession: Creating attendance session for instructorId: {}, sectionId: {}", instructorId,
+                    request.getSectionId());
+
             // GPS koordinatları null ise varsayılan değerleri kullan
             Double latitude = request.getLatitude() != null ? request.getLatitude() : defaultLatitude;
             Double longitude = request.getLongitude() != null ? request.getLongitude() : defaultLongitude;
@@ -75,20 +76,21 @@ public class AttendanceServiceImpl implements AttendanceService {
             LocalDate sessionDate = request.getSessionDate() != null ? request.getSessionDate() : LocalDate.now();
             LocalTime startTime = null;
             LocalTime endTime = null;
-            
+
             try {
                 if (request.getStartTime() != null) {
                     startTime = request.getStartTime().toLocalTime();
                 } else {
                     startTime = LocalTime.now();
                 }
-                
+
                 if (request.getEndTime() != null) {
                     endTime = request.getEndTime().toLocalTime();
                 } else if (request.getDurationMinutes() != null) {
                     endTime = startTime.plusMinutes(request.getDurationMinutes());
                 }
-                log.info("⏰ createSession: Session time - date: {}, start: {}, end: {}", sessionDate, startTime, endTime);
+                log.info("⏰ createSession: Session time - date: {}, start: {}, end: {}", sessionDate, startTime,
+                        endTime);
             } catch (Exception e) {
                 log.error("❌ createSession: Error parsing time: {}", e.getMessage(), e);
                 throw new BadRequestException("Tarih/saat formatı geçersiz: " + e.getMessage(), "INVALID_TIME_FORMAT");
@@ -135,14 +137,15 @@ public class AttendanceServiceImpl implements AttendanceService {
             SessionResponse response = mapToSessionResponse(session);
             log.info("✅ createSession: Session created successfully - ID: {}", session.getId());
             return response;
-            
+
         } catch (BadRequestException | ResourceNotFoundException e) {
             log.error("❌ createSession: Business error: {}", e.getMessage());
             throw e; // Bu hataları tekrar fırlat
         } catch (Exception e) {
             log.error("❌ createSession: Unexpected error for instructorId {}: {}", instructorId, e.getMessage(), e);
             log.error("❌ Stack trace: ", e);
-            throw new RuntimeException("Yoklama oturumu oluşturulurken beklenmeyen bir hata oluştu: " + e.getMessage(), e);
+            throw new RuntimeException("Yoklama oturumu oluşturulurken beklenmeyen bir hata oluştu: " + e.getMessage(),
+                    e);
         }
     }
 
@@ -171,54 +174,55 @@ public class AttendanceServiceImpl implements AttendanceService {
         session.setStatus(SessionStatus.CLOSED);
         session.setEndTime(LocalTime.now());
         session = sessionRepository.save(session);
-        
+
         // Yoklama vermeyen öğrenciler için otomatik devamsızlık kaydı oluştur
         createAbsentRecordsForMissingStudents(session);
 
         return mapToSessionResponse(session);
     }
-    
+
     /**
      * Session'a yoklama vermeyen öğrenciler için otomatik ABSENT kaydı oluşturur
      * Public yapıldı çünkü scheduler'dan da çağrılması gerekiyor
      */
     public void createAbsentRecordsForMissingStudents(AttendanceSession session) {
         try {
-            log.info("Yoklama vermeyen öğrenciler için devamsızlık kaydı oluşturuluyor - sessionId: {}, sectionId: {}", 
+            log.info("Yoklama vermeyen öğrenciler için devamsızlık kaydı oluşturuluyor - sessionId: {}, sectionId: {}",
                     session.getId(), session.getSectionId());
-            
-            // Section'a kayıtlı öğrencileri bul (enrollments tablosundan, status = ENROLLED)
+
+            // Section'a kayıtlı öğrencileri bul (enrollments tablosundan, status =
+            // ENROLLED)
             String sql = "SELECT DISTINCT e.student_id FROM enrollments e " +
-                        "WHERE e.section_id = ? AND e.status = 'ENROLLED'";
+                    "WHERE e.section_id = ? AND e.status = 'ENROLLED'";
             List<Long> enrolledStudentIds = jdbcTemplate.queryForList(sql, Long.class, session.getSectionId());
-            
+
             if (enrolledStudentIds.isEmpty()) {
                 log.info("Section'a kayıtlı öğrenci bulunamadı - sectionId: {}", session.getSectionId());
                 return;
             }
-            
+
             log.info("Section'a kayıtlı {} öğrenci bulundu", enrolledStudentIds.size());
-            
+
             // Bu session'a yoklama vermiş öğrencileri bul
             List<AttendanceRecord> existingRecords = recordRepository.findBySessionId(session.getId());
             Set<Long> checkedInStudentIds = existingRecords.stream()
                     .map(AttendanceRecord::getStudentId)
                     .collect(Collectors.toSet());
-            
+
             log.info("Bu session'a {} öğrenci yoklama vermiş", checkedInStudentIds.size());
-            
+
             // Yoklama vermeyen öğrencileri bul
             List<Long> absentStudentIds = enrolledStudentIds.stream()
                     .filter(studentId -> !checkedInStudentIds.contains(studentId))
                     .collect(Collectors.toList());
-            
+
             if (absentStudentIds.isEmpty()) {
                 log.info("Tüm öğrenciler yoklama vermiş, devamsızlık kaydı oluşturulmayacak");
                 return;
             }
-            
+
             log.info("{} öğrenci için devamsızlık kaydı oluşturuluyor", absentStudentIds.size());
-            
+
             // Yoklama vermeyen her öğrenci için ABSENT kaydı oluştur
             int createdCount = 0;
             for (Long studentId : absentStudentIds) {
@@ -230,7 +234,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                         log.debug("Öğrenci için zaten kayıt var, atlanıyor - studentId: {}", studentId);
                         continue;
                     }
-                    
+
                     AttendanceRecord absentRecord = AttendanceRecord.builder()
                             .sessionId(session.getId())
                             .studentId(studentId)
@@ -246,23 +250,24 @@ public class AttendanceServiceImpl implements AttendanceService {
                             .ipAddress(null)
                             .deviceInfo(null)
                             .build();
-                    
+
                     recordRepository.save(absentRecord);
                     createdCount++;
-                    log.debug("Devamsızlık kaydı oluşturuldu - sessionId: {}, studentId: {}", 
+                    log.debug("Devamsızlık kaydı oluşturuldu - sessionId: {}, studentId: {}",
                             session.getId(), studentId);
                 } catch (Exception e) {
-                    log.error("Öğrenci için devamsızlık kaydı oluşturulurken hata - studentId: {}, error: {}", 
+                    log.error("Öğrenci için devamsızlık kaydı oluşturulurken hata - studentId: {}, error: {}",
                             studentId, e.getMessage(), e);
                     // Bir öğrenci için hata olsa bile diğerlerini işlemeye devam et
                 }
             }
-            
-            log.info("{} öğrenci için devamsızlık kaydı başarıyla oluşturuldu - sessionId: {}", 
+
+            log.info("{} öğrenci için devamsızlık kaydı başarıyla oluşturuldu - sessionId: {}",
                     createdCount, session.getId());
-            
+
         } catch (Exception e) {
-            log.error("Yoklama vermeyen öğrenciler için devamsızlık kaydı oluşturulurken hata - sessionId: {}, error: {}", 
+            log.error(
+                    "Yoklama vermeyen öğrenciler için devamsızlık kaydı oluşturulurken hata - sessionId: {}, error: {}",
                     session.getId(), e.getMessage(), e);
             // Hata olsa bile session kapatma işlemini tamamla
         }
@@ -434,7 +439,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         Double latitude = request.getLatitude();
         Double longitude = request.getLongitude();
         Double distance = null;
-        
+
         if (latitude != null && longitude != null) {
             // Konum bilgisi varsa geofence kontrolü yap
             distance = gpsUtils.calculateDistance(
@@ -609,40 +614,41 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     public List<SessionResponse> getActiveSessionsForStudent(Long studentId) {
         LocalDateTime now = LocalDateTime.now();
-        
-        // Öğrencinin yoklama verdiği section'ları bul
-        List<Long> enrolledSectionIds = sessionRepository.findDistinctSectionIdsByStudentId(studentId);
 
-        // Eğer öğrenci hiç yoklama vermemişse, boş liste dön
-        // Not: İdeal olarak öğrencinin kayıtlı olduğu section'ları enrollment
-        // tablosundan çekmeliyiz
-        // Ama bu bilgi academic-service'de, şimdilik yoklama verdiği section'ları
-        // kullanacağız
+        // Öğrencinin kayıtlı olduğu section'ları enrollment tablosundan çek
+        String enrollmentSql = "SELECT DISTINCT section_id FROM enrollments " +
+                "WHERE student_id = ? AND status = 'ENROLLED'";
+        List<Long> enrolledSectionIds;
+        try {
+            enrolledSectionIds = jdbcTemplate.queryForList(enrollmentSql, Long.class, studentId);
+            log.info("📚 Öğrenci {} için kayıtlı section sayısı: {}", studentId, enrolledSectionIds.size());
+        } catch (Exception e) {
+            log.error("❌ Enrollment bilgisi alınırken hata: {}", e.getMessage());
+            enrolledSectionIds = new ArrayList<>();
+        }
+
+        // Eğer öğrenci hiçbir derse kayıtlı değilse boş liste dön
         if (enrolledSectionIds.isEmpty()) {
-            // Tüm aktif oturumları dön (öğrenci henüz hiç yoklama vermemiş olabilir)
-            // Ama süresi geçmiş olanları filtrele
-            List<AttendanceSession> allActiveSessions = sessionRepository.findAll().stream()
-                    .filter(s -> s.getStatus() == SessionStatus.ACTIVE)
-                    .filter(s -> isSessionStillActive(s, now))
-                    .toList();
-
-            return allActiveSessions.stream()
-                    .map(this::mapToSessionResponseWithCourseInfo)
-                    .toList();
+            log.info("⚠️ Öğrenci {} hiçbir derse kayıtlı görünmüyor", studentId);
+            return new ArrayList<>();
         }
 
         // Aktif oturumları bul
         List<AttendanceSession> activeSessions = sessionRepository.findActiveSessions(
                 enrolledSectionIds, SessionStatus.ACTIVE);
 
-        // Öğrencinin zaten yoklama verdiği oturumları ve süresi geçmiş olanları filtrele
+        log.info("🔍 Öğrenci {} için {} aktif yoklama oturumu bulundu", studentId, activeSessions.size());
+
+        // Öğrencinin zaten yoklama verdiği oturumları ve süresi geçmiş olanları
+        // filtrele
         List<SessionResponse> result = new ArrayList<>();
         for (AttendanceSession session : activeSessions) {
             // Oturum süresi geçmiş mi kontrol et
             if (!isSessionStillActive(session, now)) {
+                log.debug("⏰ Oturum {} süresi geçmiş, atlanıyor", session.getId());
                 continue;
             }
-            
+
             // Öğrenci bu oturuma yoklama vermiş mi kontrol et
             boolean alreadyCheckedIn = recordRepository.findBySessionIdAndStudentId(
                     session.getId(), studentId).isPresent();
@@ -650,12 +656,17 @@ public class AttendanceServiceImpl implements AttendanceService {
             if (!alreadyCheckedIn) {
                 SessionResponse response = mapToSessionResponseWithCourseInfo(session);
                 result.add(response);
+                log.info("✅ Aktif yoklama oturumu bulundu: sessionId={}, sectionId={}",
+                        session.getId(), session.getSectionId());
+            } else {
+                log.debug("✓ Öğrenci {} oturum {} için zaten yoklama vermiş", studentId, session.getId());
             }
         }
 
+        log.info("📋 Öğrenci {} için toplam {} aktif yoklama oturumu döndürülüyor", studentId, result.size());
         return result;
     }
-    
+
     /**
      * Oturumun hala aktif olup olmadığını kontrol eder (süresi geçmemiş)
      */
@@ -663,16 +674,15 @@ public class AttendanceServiceImpl implements AttendanceService {
         // Eğer endTime yoksa, oturum süresiz sayılır ve aktif kabul edilir
         if (session.getEndTime() == null) {
             // Sadece bugünün oturumlarını göster
-            return session.getSessionDate().equals(now.toLocalDate()) || 
-                   session.getSessionDate().isAfter(now.toLocalDate());
+            return session.getSessionDate().equals(now.toLocalDate()) ||
+                    session.getSessionDate().isAfter(now.toLocalDate());
         }
-        
+
         // Session tarih ve saati
         LocalDateTime sessionEndDateTime = LocalDateTime.of(
                 session.getSessionDate(),
-                session.getEndTime()
-        );
-        
+                session.getEndTime());
+
         // Şu anki zaman session bitiş zamanından önce mi?
         return now.isBefore(sessionEndDateTime) || now.isEqual(sessionEndDateTime);
     }
