@@ -42,5 +42,5 @@ public interface ScheduleService {
      * Öğrencinin/öğretim üyesinin ders programını getir.
      * Kullanıcının kayıtlı olduğu section'ların schedule'larını döndürür.
      */
-    MyScheduleResponse getMySchedule(Long userId);
+    MyScheduleResponse getMyScheduleByEmail(String email);
 }

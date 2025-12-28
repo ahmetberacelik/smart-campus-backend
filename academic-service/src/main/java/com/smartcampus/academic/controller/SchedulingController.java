@@ -38,10 +38,10 @@ public class SchedulingController {
     @GetMapping("/my-schedule")
     @PreAuthorize("hasAnyRole('STUDENT', 'FACULTY', 'ADMIN')")
     public ResponseEntity<ApiResponse<MyScheduleResponse>> getMySchedule(Authentication authentication) {
-        Long userId = Long.parseLong(authentication.getName());
-        log.info("Getting schedule for user: {}", userId);
+        String userEmail = authentication.getName();
+        log.info("Getting schedule for user email: {}", userEmail);
 
-        MyScheduleResponse schedule = scheduleService.getMySchedule(userId);
+        MyScheduleResponse schedule = scheduleService.getMyScheduleByEmail(userEmail);
         return ResponseEntity.ok(ApiResponse.success(schedule));
     }
 

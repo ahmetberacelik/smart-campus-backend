@@ -87,17 +87,21 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         @Override
         @Transactional(readOnly = true)
-        public MyScheduleResponse getMySchedule(Long userId) {
-                log.info("Getting schedule for userId: {}", userId);
+        public MyScheduleResponse getMyScheduleByEmail(String email) {
+                log.info("Getting schedule for email: {}", email);
 
-                // Önce user_id'den students.id'yi bul
+                // Önce email'den user_id'yi bul, sonra students.id'yi bul
                 Long studentId;
                 try {
+                        Long userId = jdbcTemplate.queryForObject(
+                                        "SELECT id FROM users WHERE email = ?", Long.class, email);
+                        log.info("Found user_id: {} for email: {}", userId, email);
+
                         studentId = jdbcTemplate.queryForObject(
                                         "SELECT id FROM students WHERE user_id = ?", Long.class, userId);
                         log.info("Found student_id: {} for user_id: {}", studentId, userId);
                 } catch (Exception e) {
-                        log.warn("User {} is not a student, returning empty schedule", userId);
+                        log.warn("User {} is not a student, returning empty schedule", email);
                         return MyScheduleResponse.builder()
                                         .semester("FALL")
                                         .year(Year.now().getValue())
@@ -160,7 +164,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                         }
                 }
 
-                log.info("Returning {} schedule entries for user: {}", entries.size(), userId);
+                log.info("Returning {} schedule entries for user: {}", entries.size(), email);
 
                 return MyScheduleResponse.builder()
                                 .semester(semester)
